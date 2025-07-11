@@ -1,3 +1,0 @@
-[submodule "apps/mobile"]
-    path = apps/mobile
-    url = git@github.com:taiga-global/mosslab-app.git
