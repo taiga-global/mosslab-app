@@ -23,9 +23,9 @@ jobs:
       - name: SSH & deploy
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd ~/your-nest-project
+            cd ~/mosslab-app/apps/backend
             git pull origin main
             pnpm install
             pnpm build
-            pm2 restart nest-api
+            pm2 restart mosslab-backend
           EOF
