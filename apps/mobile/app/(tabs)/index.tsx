@@ -10,7 +10,7 @@ export default function HomeScreen() {
         style={{ width: 140, height: 75 }}
       />
       <View className="flex-1 flex-col gap-3 justify-center">
-        <Link href={'../animated'}>Animated</Link>
+        <Link href={'../(modes)/(animated)/upload'}>Animated</Link>
       </View>
     </View>
   );

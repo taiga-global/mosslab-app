@@ -1,24 +1,26 @@
 import ImageViewer from '@/components/ImageViewer';
+import { BottomGradient, HeaderGradient } from '@/components/LayoutGradient';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Dimensions, FlatList, Text, View } from 'react-native';
 // import ImagePicker from 'react-native-image-crop-picker';
 import { Button } from 'tamagui';
 
 const screenWidth = Dimensions.get('window').width;
 
-export default function AnimatedPhotosScreen() {
+export default function UploadScreen() {
   const ITEM_PADDING = 10;
   const ITEM_WIDTH = screenWidth / 2 - ITEM_PADDING;
-  const [selectedImage, setSelectedImage] = useState<string | undefined>(
-    undefined,
-  );
+  // const [selectedImage, setSelectedImage] = useState<string | undefined>(
+  //   undefined,
+  // );
   const { showActionSheetWithOptions } = useActionSheet();
+  const router = useRouter();
 
   const onPress = () => {
     const options = ['Camera', 'Album', 'Cancel'];
+
     // const destructiveButtonIndex = 0;
     const cancelButtonIndex = 2;
 
@@ -52,9 +54,13 @@ export default function AnimatedPhotosScreen() {
     });
 
     if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
+      // setSelectedImage(result.assets[0].uri);
+      router.push({
+        pathname: '../convert',
+        params: { imageUri: result.assets[0].uri },
+      });
     } else {
-      alert('You did not select any image.');
+      alert('이미지를 선택하지 않았습니다.');
     }
   };
 
@@ -72,9 +78,13 @@ export default function AnimatedPhotosScreen() {
     });
 
     if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
+      // setSelectedImage(result.assets[0].uri);
+      router.push({
+        pathname: '../convert',
+        params: { imageUri: result.assets[0].uri },
+      });
     } else {
-      alert('You did not select any image.');
+      alert('이미지를 선택하지 않았습니다.');
     }
   };
 
@@ -144,38 +154,5 @@ export default function AnimatedPhotosScreen() {
         }
       />
     </View>
-  );
-}
-
-function HeaderGradient() {
-  return (
-    <LinearGradient
-      colors={['#fff', 'transparent']}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 64,
-        zIndex: 10,
-      }}
-      pointerEvents="none"
-    />
-  );
-}
-function BottomGradient() {
-  return (
-    <LinearGradient
-      colors={['transparent', '#fff']}
-      style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 64,
-        zIndex: 10,
-      }}
-      pointerEvents="none"
-    />
   );
 }
