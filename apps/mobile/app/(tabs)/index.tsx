@@ -10,17 +10,6 @@ export default function HomeScreen() {
         style={{ width: 140, height: 75 }}
       />
       <View className="flex-1 flex-col gap-3 justify-center">
-        {/* <ImageViewer
-          imgSource={require('../../assets/images/moss-eco.png')}
-          selectedImage={selectedImage}
-        /> */}
-        {/* <Button
-          onPress={() => {
-            setIsModalVisible(true);
-          }}
-        >
-          open modal
-        </Button> */}
         <Link href={'../animated'}>Animated</Link>
       </View>
     </View>

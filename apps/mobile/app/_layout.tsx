@@ -10,6 +10,7 @@ import '../global.css';
 
 // import '../tamagui-web.css';
 
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import {
   DarkTheme,
   DefaultTheme,
@@ -24,13 +25,17 @@ export default function RootLayout() {
 
   return (
     // add this
-    <TamaguiProvider config={tamaguiConfig} defaultTheme={colorScheme!}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(modes)" options={{ headerShown: false }} />
-        </Stack>
-      </ThemeProvider>
-    </TamaguiProvider>
+    <ActionSheetProvider>
+      <TamaguiProvider config={tamaguiConfig} defaultTheme={colorScheme!}>
+        <ThemeProvider
+          value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
+        >
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(modes)" options={{ headerShown: false }} />
+          </Stack>
+        </ThemeProvider>
+      </TamaguiProvider>
+    </ActionSheetProvider>
   );
 }

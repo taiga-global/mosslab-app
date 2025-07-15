@@ -22,6 +22,7 @@ const tokens = createTokens({
     pinkDark: '#610c62',
     pinkLight: '#f17efc',
     primary: '#0B6939',
+    white: '#fff',
   },
   radius,
 });
@@ -42,6 +43,10 @@ const themes = {
   light_pink: {
     background: tokens.color.pinkLight,
     color: tokens.color.pinkDark,
+  },
+  primary: {
+    background: tokens.color.primary,
+    color: tokens.color.white,
   },
 };
 

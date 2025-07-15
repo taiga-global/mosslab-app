@@ -33,6 +33,13 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "움직이는 사진을 만들기 위해 갤러리/사진첩에 접근합니다. AI 분석을 통해 생생한 영상을 생성할 수 있도록 허용해주세요.",
+          "cameraPermission": "움직이는 사진 촬영을 위해 카메라에 접근합니다. AI 분석을 통해 생생한 영상을 생성할 수 있도록 허용해주세요."
+        }
       ]
     ],
     "experiments": {

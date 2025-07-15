@@ -27308,17 +27308,30 @@
     "animations": {},
     "media": {},
     "themes": {
+      "dark": {
+        "background": "#000",
+        "color": "#fff",
+        "id": "dark"
+      },
       "light": {
+        "color": "#000",
         "background": "#fff",
-        "color": "#111",
-        "primary": "$primary",
         "id": "light"
       },
-      "dark": {
-        "background": "#111",
+      "dark_pink": {
+        "background": "#610c62",
+        "color": "#f17efc",
+        "id": "dark_pink"
+      },
+      "light_pink": {
+        "color": "#610c62",
+        "background": "#f17efc",
+        "id": "light_pink"
+      },
+      "primary": {
+        "background": "#0B6939",
         "color": "#fff",
-        "primary": "$primary",
-        "id": "dark"
+        "id": "primary"
       }
     },
     "tokens": {
@@ -27973,11 +27986,32 @@
         }
       },
       "color": {
+        "pinkDark": {
+          "isVar": true,
+          "key": "$pinkDark",
+          "name": "c-pinkDark",
+          "val": "#610c62",
+          "variable": ""
+        },
+        "pinkLight": {
+          "isVar": true,
+          "key": "$pinkLight",
+          "name": "c-pinkLight",
+          "val": "#f17efc",
+          "variable": ""
+        },
         "primary": {
           "isVar": true,
           "key": "$primary",
           "name": "c-primary",
           "val": "#0B6939",
+          "variable": ""
+        },
+        "white": {
+          "isVar": true,
+          "key": "$white",
+          "name": "c-white",
+          "val": "#fff",
           "variable": ""
         }
       },
@@ -28736,11 +28770,32 @@
         "val": 500,
         "variable": ""
       },
+      "$color.pinkDark": {
+        "isVar": true,
+        "key": "$pinkDark",
+        "name": "c-pinkDark",
+        "val": "#610c62",
+        "variable": ""
+      },
+      "$color.pinkLight": {
+        "isVar": true,
+        "key": "$pinkLight",
+        "name": "c-pinkLight",
+        "val": "#f17efc",
+        "variable": ""
+      },
       "$color.primary": {
         "isVar": true,
         "key": "$primary",
         "name": "c-primary",
         "val": "#0B6939",
+        "variable": ""
+      },
+      "$color.white": {
+        "isVar": true,
+        "key": "$white",
+        "name": "c-white",
+        "val": "#fff",
         "variable": ""
       },
       "$radius.0": {
