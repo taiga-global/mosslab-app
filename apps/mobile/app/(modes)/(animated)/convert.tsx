@@ -14,20 +14,28 @@ const screenWidth = Dimensions.get('window').width;
 export default function ConvertScreen() {
   const { imageUri, mimeType } = useLocalSearchParams();
   const [gifUrl, setGifUrl] = useState<string | null>(null);
-  // const onPress = () => {
-  //   // 변환 버튼 클릭 시 동작 추가 (예시: 변환 상태로 변경)
-  //   setIsConverted(true);
-  // };
+  const [putUrl, setPutUrl] = useState<string | null>(null);
+  const [key, setKey] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
 
   async function uploadAndConvert() {
     const uri = typeof imageUri === 'string' ? imageUri : imageUri?.[0];
+    console.log(mimeType);
+    console.log(uri.split('/').pop());
 
-    const {
-      data: { putUrl, key },
-    } = await api.post('/upload-url', {
-      filename: uri.split('/').pop(),
-      mime: mimeType,
-    });
+    try {
+      const {
+        data: { putUrl, key },
+      } = await api.post('/upload-url', {
+        filename: uri.split('/').pop(),
+        mime: mimeType,
+      });
+      setPutUrl(putUrl);
+      setKey(key);
+    } catch (e) {
+      console.log('upload-url 에러:', e);
+      return;
+    }
 
     // 3. 파일을 읽어 Blob (or ArrayBuffer)
     const fileBuffer = await FileSystem.readAsStringAsync(uri, {
@@ -36,29 +44,51 @@ export default function ConvertScreen() {
     const blob = Buffer.from(fileBuffer, 'base64');
 
     // 4. S3 Presigned URL로 업로드 (PUT)
-    await axios.put(putUrl, blob, {
-      headers: { 'Content-Type': mimeType },
-    });
+    try {
+      putUrl &&
+        (await axios.put(putUrl, blob, {
+          headers: { 'Content-Type': mimeType },
+        }));
+    } catch (e) {
+      console.log('S3 업로드 에러:', e);
+      return;
+    }
 
-    // 5. 변환 요청
-    const {
-      data: { jobId },
-    } = await api.post('/convert', { key });
+    try {
+      // 변환 요청
+      const {
+        data: { jobId },
+      } = await api.post('/convert', { key });
+      setJobId(jobId);
+    } catch (e) {
+      console.log('변환 요청 에러:', e);
+      return;
+    }
 
     // 6. 폴링으로 상태 확인
     let status = 'PENDING';
     while (status === 'PENDING') {
-      const { data } = await api.get(`/jobs/${jobId}`);
-      status = data.status;
-      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        const { data } = await api.get(`/jobs/${jobId}`);
+        status = data.status;
+        await new Promise((r) => setTimeout(r, 1500));
+      } catch (e) {
+        console.log('폴링으로 상태 확인 에러:', e);
+        return;
+      }
     }
 
     if (status === 'DONE') {
       // 7. 결과 GIF presigned URL 받아서 <Image/>로 표시
-      const {
-        data: { outputUrl },
-      } = await api.get(`/jobs/${jobId}`);
-      setGifUrl(outputUrl);
+      try {
+        const {
+          data: { outputUrl },
+        } = await api.get(`/jobs/${jobId}`);
+        setGifUrl(outputUrl);
+      } catch (e) {
+        console.log('결과 GIF presigned URL 받아서 <Image/>로 표시 에러:', e);
+        return;
+      }
     }
   }
 

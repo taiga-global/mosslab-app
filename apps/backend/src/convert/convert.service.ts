@@ -39,10 +39,20 @@ export class ConvertService {
     private db: DynamoDbService,
   ) {}
 
+  // getPresignedUpload({ filename, mime }: { filename: string; mime: string }) {
+  //   // S3 키 생성
+  //   const key = `uploads/${uuid()}-${filename}`;
+  //   return { putUrl: this.s3.getUploadUrl(key, mime), key };
+  // }
   getPresignedUpload({ filename, mime }: { filename: string; mime: string }) {
-    // S3 키 생성
     const key = `uploads/${uuid()}-${filename}`;
-    return { putUrl: this.s3.getUploadUrl(key, mime), key };
+    try {
+      const putUrl = this.s3.getUploadUrl(key, mime);
+      return { putUrl, key };
+    } catch (e) {
+      console.error('S3 Presigned URL 생성 실패:', e);
+      throw e;
+    }
   }
 
   async requestConvert(key: string) {
