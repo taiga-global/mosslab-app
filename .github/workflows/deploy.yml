@@ -23,7 +23,6 @@ jobs:
       - name: Test SSH Connection (debug)
         run: |
           ssh -vvv ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} echo "SSH connected"
-        
 
       - name: SSH & Deploy
         run: |
@@ -32,5 +31,5 @@ jobs:
             git pull origin main
             pnpm install
             pnpm build
-            pm2 start dist/main.js --name mosslab-backend || pm2 restart mosslab-backend
+            pm2 start dist/src/main.js --name mosslab-backend || pm2 restart mosslab-backend
           EOF
