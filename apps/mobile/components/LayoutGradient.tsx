@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 export function HeaderGradient() {
   return (
     <LinearGradient
-      colors={['#fff', 'transparent']}
+      colors={['#000', 'transparent']}
       style={{
         position: 'absolute',
         top: 0,
