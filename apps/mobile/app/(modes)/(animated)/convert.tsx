@@ -62,7 +62,9 @@ export default function ConvertScreen() {
     }
   }
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    uploadAndConvert();
+  }, []);
 
   return (
     <View className="flex-1">
