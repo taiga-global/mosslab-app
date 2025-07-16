@@ -32,4 +32,16 @@ export class S3Service {
       { expiresIn: 60 * 5 },
     );
   }
+
+  /** S3에 파일 업로드 */
+  async uploadImage(buffer: Buffer, mime: string, key: string) {
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: mime,
+      }),
+    );
+  }
 }

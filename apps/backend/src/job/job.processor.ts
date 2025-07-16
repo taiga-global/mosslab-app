@@ -5,6 +5,7 @@ import {
 } from '@aws-sdk/client-sqs';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ReplicateService } from 'src/replicate/replicate.service';
+import { JobMessage } from 'type';
 import { DynamoDbService } from '../aws/dynamodb.service';
 import { S3Service } from '../aws/s3.service';
 
@@ -20,7 +21,12 @@ export class JobProcessor implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    setInterval(() => this.poll(), 5000);
+    setInterval(() => {
+      this.poll().catch((err) => {
+        // 에러 로깅 등 필요시 추가
+        console.error('poll() 실행 중 에러 발생:', err);
+      });
+    }, 5000);
   }
 
   async poll() {
@@ -34,13 +40,17 @@ export class JobProcessor implements OnModuleInit {
     if (!Messages?.length) return;
 
     for (const m of Messages) {
-      const { jobId, key } = JSON.parse(m.Body);
+      const { jobId, key } = JSON.parse(m.Body ?? '') as JobMessage;
+      if (!key) {
+        console.error('SQS 메시지에 key가 없습니다:', m.Body);
+        continue;
+      }
       try {
         // 1) S3 원본 다운로드 URL
         const srcUrl = this.s3.getDownloadUrl(key);
 
         // 2) Replicate 호출 (예시)
-        const gifBuffer = await this.replicate.makeGif(srcUrl);
+        const gifBuffer = await this.replicate.makeGif(await srcUrl);
 
         // 3) 결과 업로드
         const outKey = `results/${jobId}.gif`;
