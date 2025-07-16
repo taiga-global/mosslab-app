@@ -8,16 +8,30 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
-const app_controller_1 = require("./app.controller");
-const app_service_1 = require("./app.service");
+const config_1 = require("@nestjs/config");
+const dynamodb_service_1 = require("./aws/dynamodb.service");
+const s3_service_1 = require("./aws/s3.service");
+const sqs_service_1 = require("./aws/sqs.service");
+const convert_module_1 = require("./convert/convert.module");
+const job_processor_1 = require("./job/job.processor");
+const app_logger_middleware_1 = require("./middleware/app-logger.middleware");
+const replicate_service_1 = require("./replicate/replicate.service");
 let AppModule = class AppModule {
+    configure(consumer) {
+        consumer.apply(app_logger_middleware_1.AppLoggerMiddleware).forRoutes('*');
+    }
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [],
-        controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        imports: [config_1.ConfigModule.forRoot({ isGlobal: true }), convert_module_1.ConvertModule],
+        providers: [
+            job_processor_1.JobProcessor,
+            s3_service_1.S3Service,
+            sqs_service_1.SqsService,
+            dynamodb_service_1.DynamoDbService,
+            replicate_service_1.ReplicateService,
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

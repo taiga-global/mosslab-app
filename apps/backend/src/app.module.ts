@@ -10,13 +10,14 @@
 // })
 // export class AppModule {}
 
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DynamoDbService } from './aws/dynamodb.service';
 import { S3Service } from './aws/s3.service';
 import { SqsService } from './aws/sqs.service';
 import { ConvertModule } from './convert/convert.module';
 import { JobProcessor } from './job/job.processor';
+import { AppLoggerMiddleware } from './middleware/app-logger.middleware';
 import { ReplicateService } from './replicate/replicate.service';
 
 @Module({
@@ -29,4 +30,8 @@ import { ReplicateService } from './replicate/replicate.service';
     ReplicateService,
   ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(AppLoggerMiddleware).forRoutes('*');
+  }
+}
