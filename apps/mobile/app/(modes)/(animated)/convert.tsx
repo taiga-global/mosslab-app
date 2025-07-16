@@ -26,7 +26,7 @@ export default function ConvertScreen() {
     try {
       const {
         data: { putUrl, key },
-      } = await api.post('/upload-url', {
+      } = await api.post('upload-url', {
         filename: uri.split('/').pop(),
         mime: mimeType,
       });

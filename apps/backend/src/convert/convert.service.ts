@@ -44,10 +44,16 @@ export class ConvertService {
   //   const key = `uploads/${uuid()}-${filename}`;
   //   return { putUrl: this.s3.getUploadUrl(key, mime), key };
   // }
-  getPresignedUpload({ filename, mime }: { filename: string; mime: string }) {
+  async getPresignedUpload({
+    filename,
+    mime,
+  }: {
+    filename: string;
+    mime: string;
+  }) {
     const key = `uploads/${uuid()}-${filename}`;
     try {
-      const putUrl = this.s3.getUploadUrl(key, mime);
+      const putUrl = await this.s3.getUploadUrl(key, mime);
       return { putUrl, key };
     } catch (e) {
       console.error('S3 Presigned URL 생성 실패:', e);

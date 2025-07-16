@@ -28,8 +28,7 @@ async function safeJson<T>(res: Response, schema: z.ZodSchema<T>): Promise<T> {
 @Injectable()
 export class ReplicateService {
   private replicate = new Replicate({
-    auth: process.env.REPLICATE_API_TOKEN!,
-    userAgent: 'mosslab-nestjs/1.0',
+    auth: process.env.REPLICATE_API_TOKEN,
   });
 
   /** 최종 64×32 GIF Buffer 반환 */

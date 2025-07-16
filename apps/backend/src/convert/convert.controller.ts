@@ -43,8 +43,8 @@ export class ConvertController {
   constructor(private service: ConvertService) {}
 
   @Post('upload-url')
-  getUpload(@Body() dto: UploadUrlDto) {
-    return this.service.getPresignedUpload(dto);
+  async getUpload(@Body() dto: UploadUrlDto) {
+    return await this.service.getPresignedUpload(dto);
   }
 
   @Post('convert')
