@@ -57,7 +57,10 @@ export default function UploadScreen() {
       // setSelectedImage(result.assets[0].uri);
       router.push({
         pathname: '../convert',
-        params: { imageUri: result.assets[0].uri },
+        params: {
+          imageUri: result.assets[0].uri,
+          mimeType: result.assets[0].mimeType,
+        },
       });
     } else {
       alert('이미지를 선택하지 않았습니다.');
@@ -81,7 +84,10 @@ export default function UploadScreen() {
       // setSelectedImage(result.assets[0].uri);
       router.push({
         pathname: '../convert',
-        params: { imageUri: result.assets[0].uri },
+        params: {
+          imageUri: result.assets[0].uri,
+          mimeType: result.assets[0].mimeType,
+        },
       });
     } else {
       alert('이미지를 선택하지 않았습니다.');
