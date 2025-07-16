@@ -4,10 +4,10 @@ import {
   SQSClient,
 } from '@aws-sdk/client-sqs';
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { ReplicateService } from 'src/replicate/replicate.service';
 import { JobMessage } from 'type';
 import { DynamoDbService } from '../aws/dynamodb.service';
 import { S3Service } from '../aws/s3.service';
+import { ReplicateService } from '../replicate/replicate.service';
 
 @Injectable()
 export class JobProcessor implements OnModuleInit {
