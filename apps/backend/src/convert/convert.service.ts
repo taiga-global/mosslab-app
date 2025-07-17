@@ -68,7 +68,7 @@ export class ConvertService {
     return { jobId };
   }
 
-  getStatus(jobId: string) {
-    return this.db.get(jobId);
+  async getStatus(jobId: string) {
+    return await this.db.get(jobId);
   }
 }

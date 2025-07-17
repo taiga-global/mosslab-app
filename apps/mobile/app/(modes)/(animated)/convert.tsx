@@ -14,54 +14,61 @@ const screenWidth = Dimensions.get('window').width;
 export default function ConvertScreen() {
   const { imageUri, mimeType } = useLocalSearchParams();
   const [gifUrl, setGifUrl] = useState<string | null>(null);
-  const [putUrl, setPutUrl] = useState<string | null>(null);
-  const [key, setKey] = useState<string | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
 
   async function uploadAndConvert() {
     const uri = typeof imageUri === 'string' ? imageUri : imageUri?.[0];
-    console.log(mimeType);
-    console.log(uri.split('/').pop());
-
+    let putUrl, key, jobId, gifUrl;
     try {
-      const {
-        data: { putUrl, key },
-      } = await api.post('upload-url', {
+      console.log('1. upload-url 요청 시작');
+      const { data } = await api.post('upload-url', {
         filename: uri.split('/').pop(),
         mime: mimeType,
       });
-      setPutUrl(putUrl);
-      setKey(key);
+      putUrl = data.putUrl;
+      key = data.key;
+      console.log('1. upload-url 요청 성공:', { putUrl, key });
     } catch (e) {
-      console.log('upload-url 에러:', e);
+      console.log('1. upload-url 에러:', e);
       return;
     }
 
     // 3. 파일을 읽어 Blob (or ArrayBuffer)
-    const fileBuffer = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const blob = Buffer.from(fileBuffer, 'base64');
-
-    // 4. S3 Presigned URL로 업로드 (PUT)
     try {
-      putUrl &&
-        (await axios.put(putUrl, blob, {
-          headers: { 'Content-Type': mimeType },
-        }));
+      console.log('2. 파일 읽기 시작');
+      const fileBuffer = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      console.log('2. 파일 읽기 완료');
+      const blob = await (
+        await fetch(`data:${mimeType};base64,${fileBuffer}`)
+      ).blob();
+      console.log('2. blob 생성 완료', blob);
+
+      if (!putUrl) {
+        console.log('2. putUrl이 없음');
+        return;
+      }
+      const response = await axios.put(putUrl, blob, {
+        headers: { 'Content-Type': mimeType },
+      });
+      console.log(
+        '2. S3 업로드 응답:',
+        response.status,
+        response.statusText,
+        response.headers,
+      );
     } catch (e) {
-      console.log('S3 업로드 에러:', e);
+      console.log('2. S3 업로드 에러:', e);
       return;
     }
 
     try {
-      // 변환 요청
-      const {
-        data: { jobId },
-      } = await api.post('/convert', { key });
-      setJobId(jobId);
+      console.log('3. 변환 요청 시작');
+      const { data } = await api.post('/convert', { key });
+      jobId = data.jobId;
+      console.log('3. 변환 요청 성공:', jobId);
     } catch (e) {
-      console.log('변환 요청 에러:', e);
+      console.log('3. 변환 요청 에러:', e);
       return;
     }
 
@@ -69,11 +76,13 @@ export default function ConvertScreen() {
     let status = 'PENDING';
     while (status === 'PENDING') {
       try {
+        console.log('4. 폴링 상태 확인 중...');
         const { data } = await api.get(`/jobs/${jobId}`);
         status = data.status;
+        console.log('4. 폴링 응답:', data);
         await new Promise((r) => setTimeout(r, 1500));
       } catch (e) {
-        console.log('폴링으로 상태 확인 에러:', e);
+        console.log('4. 폴링 에러:', e);
         return;
       }
     }
@@ -81,12 +90,14 @@ export default function ConvertScreen() {
     if (status === 'DONE') {
       // 7. 결과 GIF presigned URL 받아서 <Image/>로 표시
       try {
+        console.log('5. 결과 GIF presigned URL 요청');
         const {
           data: { outputUrl },
         } = await api.get(`/jobs/${jobId}`);
         setGifUrl(outputUrl);
+        console.log('5. 결과 GIF presigned URL 성공:', outputUrl);
       } catch (e) {
-        console.log('결과 GIF presigned URL 받아서 <Image/>로 표시 에러:', e);
+        console.log('5. 결과 GIF presigned URL 에러:', e);
         return;
       }
     }
