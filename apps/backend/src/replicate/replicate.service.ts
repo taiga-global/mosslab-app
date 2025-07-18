@@ -1,14 +1,13 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import FormData from 'form-data';
 import fetch, { Response } from 'node-fetch';
 import Replicate, { FileOutput } from 'replicate';
 import { z } from 'zod';
 
 /* ─────────────── api2convert 응답 스키마 ─────────────── */
-const Api2CreateSchema = z.object({ job: z.string() });
+const Api2CreateSchema = z.object({ id: z.string() }); // ← id
 const Api2StatusSchema = z.object({
-  status: z.enum(['successful', 'failed', 'processing']),
-  output: z.object({ url: z.string().url() }).optional(),
+  status: z.object({ code: z.string() }), // ← status.code
+  output: z.array(z.object({ uri: z.string().url() })).optional(), // ← output[].uri
 });
 
 /* ─────────────── 공통 헬퍼 ─────────────── */
@@ -59,8 +58,9 @@ export class ReplicateService {
         output_format: 'jpg',
       },
     });
-
-    return toUrl(out);
+    const url = toUrl(out);
+    console.log(url);
+    return url;
   }
 
   /* 2️⃣ Seedance-1-Pro → MP4 URL */
@@ -74,35 +74,54 @@ export class ReplicateService {
         resolution: '480p',
       },
     });
-    return toUrl(out);
+    const url = toUrl(out);
+    console.log(url);
+    return url;
   }
 
   /* 3️⃣ api2convert : MP4 → 64×32 GIF(Buffer) */
   private async mp4ToGif(mp4Url: string): Promise<Buffer> {
     /* 3-1 Job 생성 */
-    const form = new FormData();
-    form.append('input[0][type]', 'remote');
-    form.append('input[0][source]', mp4Url);
-    form.append('conversion[0][category]', 'image');
-    form.append('conversion[0][target]', 'gif');
-    form.append('conversion[0][options][width]', '64');
-    form.append('conversion[0][options][height]', '32');
+    // const form = new FormData();
+    // form.append('input[0][type]', 'remote');
+    // form.append('input[0][source]', mp4Url);
+    // form.append('conversion[0][category]', 'image');
+    // form.append('conversion[0][target]', 'gif');
+    // form.append('conversion[0][options][width]', '64');
+    // form.append('conversion[0][options][height]', '32');
 
     const createRes = await fetch('https://api.api2convert.com/v2/jobs', {
       method: 'POST',
       headers: {
         'x-oc-api-key': process.env.API2CONVERT_API_KEY!,
-        ...form.getHeaders(),
+        'Content-Type': 'application/json',
       },
-      body: form,
+      body: JSON.stringify({
+        input: [
+          {
+            type: 'remote',
+            source: mp4Url,
+          },
+        ],
+        conversion: [
+          {
+            category: 'image',
+            target: 'gif',
+            options: {
+              width: 64,
+              height: 32,
+            },
+          },
+        ],
+      }),
     });
     if (!createRes.ok)
       throw new InternalServerErrorException(createRes.statusText);
 
-    const { job } = await safeJson(createRes, Api2CreateSchema);
+    const { id } = await safeJson(createRes, Api2CreateSchema); // ← id 사용
 
-    /* 3-2 상태 폴링 */
-    const statusUrl = `https://api.api2convert.com/v2/jobs/${job}`;
+    /* 3-2 상태 polling */
+    const statusUrl = `https://api.api2convert.com/v2/jobs/${id}`;
     let gifUrl: string | undefined;
 
     while (!gifUrl) {
@@ -111,11 +130,13 @@ export class ReplicateService {
       });
       const data = await safeJson(res, Api2StatusSchema);
 
-      if (data.status === 'failed')
+      const code = data.status.code;
+      if (code === 'failed')
         throw new InternalServerErrorException('Conversion failed');
 
-      if (data.status === 'successful' && data.output) gifUrl = data.output.url;
-      else await new Promise((r) => setTimeout(r, 1500));
+      if (code === 'completed' && data.output?.length)
+        gifUrl = data.output[0].uri;
+      else await new Promise((r) => setTimeout(r, 1500)); // processing 등
     }
 
     /* 3-3 GIF 다운로드 */
