@@ -3,7 +3,6 @@ import { ActivityIndicator, Dimensions, Text, View } from 'react-native';
 import api from '@/api';
 import ImageViewer from '@/components/ImageViewer';
 import { HeaderGradient } from '@/components/LayoutGradient';
-import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -48,15 +47,23 @@ export default function ConvertScreen() {
         console.log('2. putUrl이 없음');
         return;
       }
-      const response = await axios.put(putUrl, blob, {
-        headers: { 'Content-Type': mimeType },
+      // const response = await axios.put(putUrl, blob, {
+      //   headers: { 'Content-Type': mimeType },
+      // });
+      // console.log(
+      //   '2. S3 업로드 응답:',
+      //   response.status,
+      //   response.statusText,
+      //   response.headers,
+      // );
+      const uploadResult = await FileSystem.uploadAsync(putUrl, uri, {
+        httpMethod: 'PUT',
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers: {
+          'Content-Type': 'image/jpeg',
+        },
       });
-      console.log(
-        '2. S3 업로드 응답:',
-        response.status,
-        response.statusText,
-        response.headers,
-      );
+      console.log('S3 업로드 응답:', uploadResult);
     } catch (e) {
       console.log('2. S3 업로드 에러:', e);
       return;
@@ -80,7 +87,7 @@ export default function ConvertScreen() {
         const { data } = await api.get(`/jobs/${jobId}`);
         status = data.status;
         console.log('4. 폴링 응답:', data);
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 20000));
       } catch (e) {
         console.log('4. 폴링 에러:', e);
         return;

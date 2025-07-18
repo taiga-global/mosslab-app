@@ -25,8 +25,8 @@ export class S3Service {
   }
 
   /** 다운로드용 URL (5 분) */
-  getDownloadUrl(key: string) {
-    return getSignedUrl(
+  async getDownloadUrl(key: string) {
+    return await getSignedUrl(
       this.s3,
       new GetObjectCommand({ Bucket: this.bucket, Key: key }),
       { expiresIn: 60 * 5 },

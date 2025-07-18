@@ -1,20 +1,17 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import FormData from 'form-data';
 import fetch, { Response } from 'node-fetch';
-import Replicate from 'replicate';
+import Replicate, { FileOutput } from 'replicate';
 import { z } from 'zod';
 
-/* ──────────────────── 런타임-검증 스키마 ──────────────────── */
-const UrlSchema = z.string().url();
-
+/* ─────────────── api2convert 응답 스키마 ─────────────── */
 const Api2CreateSchema = z.object({ job: z.string() });
-
 const Api2StatusSchema = z.object({
   status: z.enum(['successful', 'failed', 'processing']),
   output: z.object({ url: z.string().url() }).optional(),
 });
 
-/* 안전한 JSON 파서 */
+/* ─────────────── 공통 헬퍼 ─────────────── */
 async function safeJson<T>(res: Response, schema: z.ZodSchema<T>): Promise<T> {
   const data: unknown = await res.json();
   const parsed = schema.safeParse(data);
@@ -24,35 +21,49 @@ async function safeJson<T>(res: Response, schema: z.ZodSchema<T>): Promise<T> {
   return parsed.data;
 }
 
-/* ─────────────────────── 서비스 ─────────────────────── */
+function toUrl(val: unknown): string {
+  /* 단일 문자열 */
+  if (typeof val === 'string') return val;
+
+  /* FileOutput */
+  if (val && typeof (val as FileOutput).url === 'function')
+    return (val as FileOutput).url().href;
+
+  /* 문자열/파일 배열 */
+  if (Array.isArray(val) && val.length) return toUrl(val[0]);
+
+  throw new Error('Unsupported output type from Replicate');
+}
+
+/* ─────────────────── 서비스 ─────────────────── */
 @Injectable()
 export class ReplicateService {
   private replicate = new Replicate({
     auth: process.env.REPLICATE_API_TOKEN,
   });
 
-  /** 최종 64×32 GIF Buffer 반환 */
+  /** S3 원본 → 64×32 GIF (Buffer) */
   async makeGif(imageUrl: string): Promise<Buffer> {
     const cleaned = await this.fluxKontextPro(imageUrl);
     const mp4 = await this.seedancePro(cleaned);
     return this.mp4ToGif(mp4);
   }
 
-  /* 1️⃣ 배경 제거 */
-  private async fluxKontextPro(img: string): Promise<string> {
+  /* 1️⃣ Flux-Kontext-Pro → JPG URL */
+  private async fluxKontextPro(src: string): Promise<string> {
     const out = await this.replicate.run('black-forest-labs/flux-kontext-pro', {
       input: {
         prompt:
           'Make the background solid black with absolutely nothing else in it, rendered as a 90s cartoon.',
-        input_image: img,
+        input_image: src,
         output_format: 'jpg',
       },
     });
 
-    return UrlSchema.parse(out); // ← 단언 대신 검증
+    return toUrl(out);
   }
 
-  /* 2️⃣ Seedance-1-Pro */
+  /* 2️⃣ Seedance-1-Pro → MP4 URL */
   private async seedancePro(img: string): Promise<string> {
     const out = await this.replicate.run('bytedance/seedance-1-pro', {
       input: {
@@ -63,15 +74,15 @@ export class ReplicateService {
         resolution: '480p',
       },
     });
-
-    return UrlSchema.parse(out);
+    return toUrl(out);
   }
 
-  /* 3️⃣ api2convert → GIF */
-  private async mp4ToGif(mp4: string): Promise<Buffer> {
+  /* 3️⃣ api2convert : MP4 → 64×32 GIF(Buffer) */
+  private async mp4ToGif(mp4Url: string): Promise<Buffer> {
+    /* 3-1 Job 생성 */
     const form = new FormData();
     form.append('input[0][type]', 'remote');
-    form.append('input[0][source]', mp4);
+    form.append('input[0][source]', mp4Url);
     form.append('conversion[0][category]', 'image');
     form.append('conversion[0][target]', 'gif');
     form.append('conversion[0][options][width]', '64');
@@ -85,21 +96,20 @@ export class ReplicateService {
       },
       body: form,
     });
-
     if (!createRes.ok)
       throw new InternalServerErrorException(createRes.statusText);
 
     const { job } = await safeJson(createRes, Api2CreateSchema);
 
-    /* ------ 폴링 ------ */
+    /* 3-2 상태 폴링 */
     const statusUrl = `https://api.api2convert.com/v2/jobs/${job}`;
     let gifUrl: string | undefined;
 
     while (!gifUrl) {
-      const statusRes = await fetch(statusUrl, {
+      const res = await fetch(statusUrl, {
         headers: { 'x-oc-api-key': process.env.API2CONVERT_API_KEY! },
       });
-      const data = await safeJson(statusRes, Api2StatusSchema);
+      const data = await safeJson(res, Api2StatusSchema);
 
       if (data.status === 'failed')
         throw new InternalServerErrorException('Conversion failed');
@@ -108,7 +118,7 @@ export class ReplicateService {
       else await new Promise((r) => setTimeout(r, 1500));
     }
 
-    /* GIF 다운로드 */
+    /* 3-3 GIF 다운로드 */
     const gifRes = await fetch(gifUrl);
     if (!gifRes.ok)
       throw new InternalServerErrorException('GIF download failed');
