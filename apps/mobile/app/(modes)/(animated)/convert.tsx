@@ -101,8 +101,13 @@ export default function ConvertScreen() {
         const {
           data: { outputUrl },
         } = await api.get(`/jobs/${jobId}`);
-        setGifUrl(outputUrl);
-        console.log('5. 결과 GIF presigned URL 성공:', outputUrl);
+        // 1. presigned URL로 GIF 파일 다운로드
+        const localUri = FileSystem.cacheDirectory + 'result.gif';
+        const downloadRes = await FileSystem.downloadAsync(outputUrl, localUri);
+        console.log('5. GIF 다운로드 성공:', downloadRes.uri);
+
+        // 2. 다운로드된 파일 경로를 setGifUrl에 저장
+        setGifUrl(downloadRes.uri);
       } catch (e) {
         console.log('5. 결과 GIF presigned URL 에러:', e);
         return;
@@ -146,7 +151,17 @@ export default function ConvertScreen() {
         </Text>
       </View>
       {!gifUrl && <ActivityIndicator className="flex-1" size="large" />}
-      {gifUrl}
+      {gifUrl && (
+        <ImageViewer
+          imgSource={
+            typeof gifUrl === 'string'
+              ? { uri: gifUrl }
+              : require('@/assets/images/animated/sample1.png')
+          }
+          height={300}
+          width={screenWidth}
+        />
+      )}
     </View>
   );
 }

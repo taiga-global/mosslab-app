@@ -69,6 +69,22 @@ export class ConvertService {
   }
 
   async getStatus(jobId: string) {
-    return await this.db.get(jobId);
+    const job = (await this.db.get(jobId)) as {
+      status: string;
+      outputKey?: string;
+    } | null;
+    let outputUrl = '';
+    let status = 'PENDING'; // 기본값(혹은 null, undefined 등)
+    if (job) {
+      status = job.status;
+      if (job.outputKey && job.status === 'DONE') {
+        outputUrl = await this.s3.getDownloadUrl(job.outputKey);
+      }
+    }
+    return {
+      status,
+      outputUrl,
+      // 필요하다면 outputKey 등 추가
+    };
   }
 }
