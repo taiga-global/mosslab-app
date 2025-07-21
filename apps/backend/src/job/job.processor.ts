@@ -40,7 +40,10 @@ export class JobProcessor implements OnModuleInit {
           WaitTimeSeconds: 5,
         }),
       );
-      if (!Messages?.length) return;
+      if (!Messages?.length) {
+        console.error('Message가 없습니다:', Messages);
+        return;
+      }
 
       for (const m of Messages) {
         const { jobId, key } = JSON.parse(m.Body ?? '') as JobMessage;
