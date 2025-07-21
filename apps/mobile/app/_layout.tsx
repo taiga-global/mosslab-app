@@ -1,14 +1,5 @@
-// import { Stack } from "expo-router";
 import tamaguiConfig from '@/tamagui.config';
 import '../global.css';
-
-// export default function RootLayout() {
-//   return (
-
-//   );
-// }
-
-// import '../tamagui-web.css';
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';

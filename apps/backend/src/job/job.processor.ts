@@ -24,7 +24,6 @@ export class JobProcessor implements OnModuleInit {
   onModuleInit() {
     setInterval(() => {
       this.poll().catch((err) => {
-        // 에러 로깅 등 필요시 추가
         console.error('poll() 실행 중 에러 발생:', err);
       });
     }, 5000);
@@ -42,10 +41,7 @@ export class JobProcessor implements OnModuleInit {
           WaitTimeSeconds: 5,
         }),
       );
-      if (!Messages?.length) {
-        console.log('메세지없음');
-        return;
-      }
+      if (!Messages?.length) return;
 
       for (const m of Messages) {
         const { jobId, key } = JSON.parse(m.Body ?? '') as JobMessage;
@@ -67,7 +63,11 @@ export class JobProcessor implements OnModuleInit {
             console.log('2. Replicate 변환 성공');
           } catch (err) {
             console.error('2. Replicate 변환 에러:', err);
-            console.log('2. Replicate 변환 실패 srcUrl:', srcUrl);
+            // 실패 시
+            await this.db.markFailed(
+              jobId,
+              'Replicate 변환 에러: ' + String(err),
+            );
             continue; // 다음 메시지로 넘어감
           }
 

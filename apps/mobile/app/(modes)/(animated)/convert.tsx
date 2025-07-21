@@ -7,7 +7,6 @@ import * as FileSystem from 'expo-file-system';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Button } from 'tamagui';
-
 const screenWidth = Dimensions.get('window').width;
 
 export default function ConvertScreen() {
@@ -102,7 +101,7 @@ export default function ConvertScreen() {
           data: { outputUrl },
         } = await api.get(`/jobs/${jobId}`);
         // 1. presigned URL로 GIF 파일 다운로드
-        const localUri = FileSystem.cacheDirectory + 'result.gif';
+        const localUri = FileSystem.cacheDirectory + `result_${Date.now()}.gif`;
         const downloadRes = await FileSystem.downloadAsync(outputUrl, localUri);
         console.log('5. GIF 다운로드 성공:', downloadRes.uri);
 
@@ -143,24 +142,30 @@ export default function ConvertScreen() {
         height={300}
         width={screenWidth}
       />
-      <View className="flex items-center pt-6 px-10">
-        <Text className="text-2xl font-bold">변환 중</Text>
+      <View className="flex items-center py-6 px-10">
+        <Text className="text-2xl font-bold">
+          {gifUrl ? '변환 완료' : '변환 중'}
+        </Text>
         <Text className="text-base text-gray-500 text-center">
-          AI가 사진을 분석해, 생생하게 움직이는 영상으로 만들어 moss eco에서
-          생동감 있게 표현합니다.
+          {gifUrl
+            ? '이미지 변환이 완료되었습니다. 영상을 다시 생성하거나 moss eco에 바로 전송할 수 있습니다.'
+            : 'AI가 사진을 분석해, 생생하게 움직이는 영상으로 만들어 moss eco에서 생동감 있게 표현합니다.'}
         </Text>
       </View>
       {!gifUrl && <ActivityIndicator className="flex-1" size="large" />}
       {gifUrl && (
+        // <View className="flex-1 justify-center items-center">
         <ImageViewer
+          key={gifUrl}
           imgSource={
             typeof gifUrl === 'string'
               ? { uri: gifUrl }
               : require('@/assets/images/animated/sample1.png')
           }
-          height={300}
+          height={screenWidth / 2}
           width={screenWidth}
         />
+        // </View>
       )}
     </View>
   );

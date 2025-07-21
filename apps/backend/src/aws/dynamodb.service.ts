@@ -2,8 +2,6 @@ import {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
-  PutItemCommandInput,
-  PutItemCommandOutput,
   UpdateItemCommand,
 } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
@@ -14,20 +12,29 @@ export class DynamoDbService {
   private ddb = new DynamoDBClient({ region: process.env.AWS_REGION });
   private table = process.env.AWS_DDB_TABLE;
 
-  async putPending(
-    jobId: string,
-    inputKey: string,
-  ): Promise<PutItemCommandOutput> {
-    const params: PutItemCommandInput = {
-      TableName: this.table,
-      Item: marshall({ jobId, status: 'PENDING', inputKey }),
-    };
+  // async putPending(
+  //   jobId: string,
+  //   inputKey: string,
+  // ): Promise<PutItemCommandOutput> {
+  //   const params: PutItemCommandInput = {
+  //     TableName: this.table,
+  //     Item: marshall({ jobId, status: 'PENDING', inputKey }),
+  //   };
 
-    // 제네릭 파라미터를 넣어 any 추론을 막는다
-    return this.ddb.send(new PutItemCommand(params));
+  //   // 제네릭 파라미터를 넣어 any 추론을 막는다
+  //   return this.ddb.send(new PutItemCommand(params));
+  // }
+
+  async putPending(jobId: string, inputKey: string) {
+    return this.ddb.send(
+      new PutItemCommand({
+        TableName: this.table,
+        Item: marshall({ jobId, status: 'PENDING', inputKey }),
+      }),
+    );
   }
 
-  markDone(jobId: string, outputKey: string) {
+  async markDone(jobId: string, outputKey: string) {
     return this.ddb.send(
       new UpdateItemCommand({
         TableName: this.table,
@@ -35,6 +42,21 @@ export class DynamoDbService {
         UpdateExpression: 'SET #s = :s, outputKey = :o',
         ExpressionAttributeNames: { '#s': 'status' },
         ExpressionAttributeValues: marshall({ ':s': 'DONE', ':o': outputKey }),
+      }),
+    );
+  }
+
+  async markFailed(jobId: string, errorMessage: string) {
+    return this.ddb.send(
+      new UpdateItemCommand({
+        TableName: this.table,
+        Key: marshall({ jobId }),
+        UpdateExpression: 'SET #s = :s, errorMessage = :e',
+        ExpressionAttributeNames: { '#s': 'status' },
+        ExpressionAttributeValues: marshall({
+          ':s': 'FAILED',
+          ':e': errorMessage,
+        }),
       }),
     );
   }
