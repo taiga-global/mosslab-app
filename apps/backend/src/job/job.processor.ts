@@ -32,7 +32,6 @@ export class JobProcessor implements OnModuleInit {
   async poll() {
     if (this.isPolling) return;
     this.isPolling = true;
-    console.log('poll 진입');
     try {
       const { Messages } = await this.sqs.send(
         new ReceiveMessageCommand({

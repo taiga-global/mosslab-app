@@ -1,35 +1,13 @@
-// import { Injectable } from '@nestjs/common';
-// import { CreateConvertDto } from './dto/create-convert.dto';
-// import { UpdateConvertDto } from './dto/update-convert.dto';
-
-// @Injectable()
-// export class ConvertService {
-//   create(createConvertDto: CreateConvertDto) {
-//     return 'This action adds a new convert';
-//   }
-
-//   findAll() {
-//     return `This action returns all convert`;
-//   }
-
-//   findOne(id: number) {
-//     return `This action returns a #${id} convert`;
-//   }
-
-//   update(id: number, updateConvertDto: UpdateConvertDto) {
-//     return `This action updates a #${id} convert`;
-//   }
-
-//   remove(id: number) {
-//     return `This action removes a #${id} convert`;
-//   }
-// }
-
 import { Injectable } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { DynamoDbService } from '../aws/dynamodb.service';
 import { S3Service } from '../aws/s3.service';
 import { SqsService } from '../aws/sqs.service';
+
+interface GetPresignedUploadParams {
+  filename: string;
+  mime: string;
+}
 
 @Injectable()
 export class ConvertService {
@@ -39,18 +17,7 @@ export class ConvertService {
     private db: DynamoDbService,
   ) {}
 
-  // getPresignedUpload({ filename, mime }: { filename: string; mime: string }) {
-  //   // S3 키 생성
-  //   const key = `uploads/${uuid()}-${filename}`;
-  //   return { putUrl: this.s3.getUploadUrl(key, mime), key };
-  // }
-  async getPresignedUpload({
-    filename,
-    mime,
-  }: {
-    filename: string;
-    mime: string;
-  }) {
+  async getPresignedUpload({ filename, mime }: GetPresignedUploadParams) {
     const key = `uploads/${uuid()}-${filename}`;
     try {
       const putUrl = await this.s3.getUploadUrl(key, mime);
