@@ -37,12 +37,14 @@ export class JobProcessor implements OnModuleInit {
         new ReceiveMessageCommand({
           QueueUrl: this.queueUrl,
           MaxNumberOfMessages: 1,
-          WaitTimeSeconds: 5,
+          WaitTimeSeconds: 10,
         }),
       );
       if (!Messages?.length) {
         console.error('Message가 없습니다:', Messages);
         return;
+      } else {
+        console.log('Message: ', Messages);
       }
 
       for (const m of Messages) {
