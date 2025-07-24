@@ -50,7 +50,6 @@ export default function UploadScreen() {
     });
 
     if (!result.canceled) {
-      // setSelectedImage(result.assets[0].uri);
       router.push({
         pathname: '../convert',
         params: {
@@ -122,15 +121,15 @@ export default function UploadScreen() {
         ListHeaderComponent={
           <>
             <ImageViewer
-              imgSource={require('@/assets/images/animated/cover.png')}
+              imgSource={require('@/assets/images/audiolized/cover.png')}
               height={300}
               width={screenWidth}
             />
             <View className="flex items-center py-6 px-10">
               <Text className="text-2xl font-bold">배경음악 생성</Text>
               <Text className="text-base text-gray-500 text-center">
-                AI가 사진을 분석해, 생생하게 움직이는 영상으로 만들어 moss
-                eco에서 생동감 있게 표현합니다.
+                AI가 사진을 분석해, 어울리는 배경음악을 만들어 moss eco에서
+                감각적으로 표현합니다.
               </Text>
             </View>
           </>

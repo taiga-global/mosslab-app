@@ -1,17 +1,9 @@
 import { ActivityIndicator, Alert, Dimensions, Text, View } from 'react-native';
 // import ImagePicker from 'react-native-image-crop-picker';
-
+import api, { isError } from '@/api';
 import ImageViewer from '@/components/ImageViewer';
 import { HeaderGradient } from '@/components/LayoutGradient';
-
-import api, { isError } from '@/api';
-import {
-  downloadGif,
-  pollJobStatus,
-  requestConvert,
-  requestPresignedUrl,
-  uploadToS3,
-} from '@/utils/mediaUpload';
+import * as FileSystem from 'expo-file-system';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Button } from 'tamagui';
@@ -21,6 +13,43 @@ export default function ConvertScreen() {
   const { imageUri, mimeType } = useLocalSearchParams();
   const [gifUrl, setGifUrl] = useState<string | null>(null);
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
+
+  async function requestPresignedUrl(uri: string, mimeType: string | string[]) {
+    const { putUrl, key } = (
+      await api.post('upload-url', {
+        filename: uri.split('/').pop(),
+        mime: mimeType,
+      })
+    ).data;
+    return { putUrl, key };
+  }
+
+  async function uploadToS3(putUrl: string, uri: string) {
+    return await FileSystem.uploadAsync(putUrl, uri, {
+      httpMethod: 'PUT',
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+      headers: { 'Content-Type': 'image/jpeg' },
+    });
+  }
+
+  async function requestConvert(key: string) {
+    return (await api.post('/convert', { key })).data.jobId;
+  }
+
+  async function pollJobStatus(jobId: string) {
+    let status = 'PENDING';
+    while (status === 'PENDING') {
+      status = (await api.get(`/jobs/${jobId}`)).data.status;
+      await new Promise((r) => setTimeout(r, 20000));
+    }
+    return status;
+  }
+
+  async function downloadGif(outputUrl: string) {
+    const localUri = FileSystem.cacheDirectory + `result_${Date.now()}.gif`;
+    const downloadRes = await FileSystem.downloadAsync(outputUrl, localUri);
+    return downloadRes.uri;
+  }
 
   async function uploadAndConvert() {
     const uri = typeof imageUri === 'string' ? imageUri : imageUri?.[0];
@@ -83,112 +112,6 @@ export default function ConvertScreen() {
       }
     }
   }
-
-  // async function uploadAndConvert() {
-  //   const uri = typeof imageUri === 'string' ? imageUri : imageUri?.[0];
-  //   let putUrl, key, jobId, gifUrl;
-  //   try {
-  //     console.log('1. upload-url 요청 시작');
-  //     const { putUrl, key } = (
-  //       await api.post('upload-url', {
-  //         filename: uri.split('/').pop(),
-  //         mime: mimeType,
-  //       })
-  //     ).data;
-  //     console.log('1. upload-url 요청 성공:', { putUrl, key });
-  //   } catch (error) {
-  //     if (isError(error)) {
-  //       let message = '알 수 없는 에러가 발생했습니다.';
-  //       if (
-  //         error.response &&
-  //         error.response.data &&
-  //         error.response.data.message
-  //       ) {
-  //         message = error.response.data.message;
-  //       } else if (error.message) {
-  //         message = error.message;
-  //       }
-  //       alert(message);
-  //       console.log('1. upload-url 에러:', error);
-  //     }
-  //     return;
-  //   }
-
-  //   // 3. 파일을 읽어 Blob (or ArrayBuffer)
-  //   try {
-  //     console.log('2. 파일 읽기 시작');
-  //     const fileBuffer = await FileSystem.readAsStringAsync(uri, {
-  //       encoding: FileSystem.EncodingType.Base64,
-  //     });
-  //     console.log('2. 파일 읽기 완료');
-  //     const blob = await (
-  //       await fetch(`data:${mimeType};base64,${fileBuffer}`)
-  //     ).blob();
-  //     console.log('2. blob 생성 완료', blob);
-
-  //     if (!putUrl) {
-  //       console.log('2. putUrl이 없음');
-  //       return;
-  //     }
-
-  //     const uploadResult = await FileSystem.uploadAsync(putUrl, uri, {
-  //       httpMethod: 'PUT',
-  //       uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-  //       headers: {
-  //         'Content-Type': 'image/jpeg',
-  //       },
-  //     });
-  //     console.log('S3 업로드 응답:', uploadResult);
-  //   } catch (e) {
-  //     console.log('2. S3 업로드 에러:', e);
-  //     return;
-  //   }
-
-  //   try {
-  //     console.log('3. 변환 요청 시작');
-  //     const { data } = await api.post('/convert', { key });
-  //     jobId = data.jobId;
-  //     console.log('3. 변환 요청 성공:', jobId);
-  //   } catch (e) {
-  //     console.log('3. 변환 요청 에러:', e);
-  //     return;
-  //   }
-
-  //   // 6. 폴링으로 상태 확인
-  //   let status = 'PENDING';
-  //   while (status === 'PENDING') {
-  //     try {
-  //       console.log('4. 폴링 상태 확인 중...');
-  //       const { data } = await api.get(`/jobs/${jobId}`);
-  //       status = data.status;
-  //       console.log('4. 폴링 응답:', data);
-  //       await new Promise((r) => setTimeout(r, 20000));
-  //     } catch (e) {
-  //       console.log('4. 폴링 에러:', e);
-  //       return;
-  //     }
-  //   }
-
-  //   if (status === 'DONE') {
-  //     // 7. 결과 GIF presigned URL 받아서 <Image/>로 표시
-  //     try {
-  //       console.log('5. 결과 GIF presigned URL 요청');
-  //       const {
-  //         data: { outputUrl },
-  //       } = await api.get(`/jobs/${jobId}`);
-  //       // 1. presigned URL로 GIF 파일 다운로드
-  //       const localUri = FileSystem.cacheDirectory + `result_${Date.now()}.gif`;
-  //       const downloadRes = await FileSystem.downloadAsync(outputUrl, localUri);
-  //       console.log('5. GIF 다운로드 성공:', downloadRes.uri);
-
-  //       // 2. 다운로드된 파일 경로를 setGifUrl에 저장
-  //       setGifUrl(downloadRes.uri);
-  //     } catch (e) {
-  //       console.log('5. 결과 GIF presigned URL 에러:', e);
-  //       return;
-  //     }
-  //   }
-  // }
 
   useEffect(() => {
     Alert.alert('API 실행', 'API를 실행할까요?', [
