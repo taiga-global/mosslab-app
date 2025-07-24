@@ -1,12 +1,12 @@
 import { PURPLE_IMAGES } from '@/constants/purple-images';
+import { Route, router } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
   ImageSourcePropType,
   type ImageStyle,
   type StyleProp,
   StyleSheet,
-  Text,
-  View,
+  TouchableOpacity,
   type ViewProps,
 } from 'react-native';
 import type { AnimatedProps } from 'react-native-reanimated';
@@ -17,6 +17,7 @@ interface Props extends AnimatedProps<ViewProps> {
   index?: number;
   rounded?: boolean;
   source?: ImageSourcePropType;
+  path?: string; // 추가
 }
 
 export const SlideItem: React.FC<Props> = (props) => {
@@ -25,6 +26,7 @@ export const SlideItem: React.FC<Props> = (props) => {
     index = 0,
     rounded = false,
     testID,
+    path,
     ...animatedViewProps
   } = props;
 
@@ -40,11 +42,17 @@ export const SlideItem: React.FC<Props> = (props) => {
         source={source}
         resizeMode="cover"
       />
-      <View style={styles.overlay}>
+      {path && (
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          onPress={() => router.push(path as Route)}
+        />
+      )}
+      {/* <View style={styles.overlay}>
         <View style={styles.overlayTextContainer}>
           <Text style={styles.overlayText}>{index}</Text>
         </View>
-      </View>
+      </View> */}
     </Animated.View>
   );
 };

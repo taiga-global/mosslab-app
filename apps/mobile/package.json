@@ -23,6 +23,7 @@
     "@tamagui/themes": "^1.132.6",
     "axios": "^1.10.0",
     "buffer": "^6.0.3",
+    "eslint-import-resolver-typescript": "^4.4.4",
     "expo": "~53.0.17",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.7",

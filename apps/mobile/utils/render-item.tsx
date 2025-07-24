@@ -11,8 +11,14 @@ export const renderItem = ({
   rounded = false,
   style,
 }: Options = {}): CarouselRenderItem<any> => {
-  const Item = ({ index }: { index: number }) => (
-    <SlideItem index={index} rounded={rounded} style={style} />
+  const Item = ({ item, index }: { item: any; index: number }) => (
+    <SlideItem
+      index={index}
+      rounded={rounded}
+      style={style}
+      source={item.image}
+      path={item.path}
+    />
   );
   Item.displayName = 'CarouselSlideItem';
   return Item;
