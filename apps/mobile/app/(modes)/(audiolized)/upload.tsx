@@ -91,12 +91,9 @@ export default function UploadScreen() {
   };
 
   const samples = [
-    require('@/assets/images/animated/sample1.png'),
-    require('@/assets/images/animated/sample2.png'),
-    require('@/assets/images/animated/sample3.png'),
-    require('@/assets/images/animated/sample4.png'),
-    require('@/assets/images/animated/sample5.png'),
-    require('@/assets/images/animated/sample6.png'),
+    require('@/assets/images/audiolized/sample1.png'),
+    require('@/assets/images/audiolized/sample2.png'),
+    require('@/assets/images/audiolized/sample3.png'),
   ];
 
   return (
@@ -130,7 +127,7 @@ export default function UploadScreen() {
               width={screenWidth}
             />
             <View className="flex items-center py-6 px-10">
-              <Text className="text-2xl font-bold">움직이는 사진</Text>
+              <Text className="text-2xl font-bold">배경음악 생성</Text>
               <Text className="text-base text-gray-500 text-center">
                 AI가 사진을 분석해, 생생하게 움직이는 영상으로 만들어 moss
                 eco에서 생동감 있게 표현합니다.

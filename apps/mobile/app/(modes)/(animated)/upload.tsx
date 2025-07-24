@@ -114,9 +114,6 @@ export default function UploadScreen() {
     require('@/assets/images/animated/sample1.png'),
     require('@/assets/images/animated/sample2.png'),
     require('@/assets/images/animated/sample3.png'),
-    require('@/assets/images/animated/sample4.png'),
-    require('@/assets/images/animated/sample5.png'),
-    require('@/assets/images/animated/sample6.png'),
   ];
 
   return (

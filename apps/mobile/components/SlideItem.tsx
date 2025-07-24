@@ -1,12 +1,12 @@
 import { PURPLE_IMAGES } from '@/constants/purple-images';
-import { Route, router } from 'expo-router';
-import React, { useMemo } from 'react';
+import { Route, useRouter } from 'expo-router';
+import React, { useMemo, useRef } from 'react';
 import {
   ImageSourcePropType,
   type ImageStyle,
+  PanResponder,
   type StyleProp,
   StyleSheet,
-  TouchableOpacity,
   type ViewProps,
 } from 'react-native';
 import type { AnimatedProps } from 'react-native-reanimated';
@@ -21,6 +21,9 @@ interface Props extends AnimatedProps<ViewProps> {
 }
 
 export const SlideItem: React.FC<Props> = (props) => {
+  const router = useRouter();
+  const startX = useRef(0);
+  const startY = useRef(0);
   const {
     style,
     index = 0,
@@ -35,6 +38,24 @@ export const SlideItem: React.FC<Props> = (props) => {
     [index, props.source],
   );
 
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        startX.current = evt.nativeEvent.pageX;
+        startY.current = evt.nativeEvent.pageY;
+      },
+      onPanResponderRelease: (evt) => {
+        const dx = Math.abs(evt.nativeEvent.pageX - startX.current);
+        const dy = Math.abs(evt.nativeEvent.pageY - startY.current);
+        // 10px 이하 이동이면 탭으로 간주
+        if (dx < 10 && dy < 10 && path) {
+          router.push(path as Route);
+        }
+      },
+    }),
+  ).current;
+
   return (
     <Animated.View testID={testID} style={{ flex: 1 }} {...animatedViewProps}>
       <Animated.Image
@@ -43,11 +64,17 @@ export const SlideItem: React.FC<Props> = (props) => {
         resizeMode="cover"
       />
       {path && (
+        <Animated.View
+          style={StyleSheet.absoluteFill}
+          {...panResponder.panHandlers}
+        />
+      )}
+      {/* {path && (
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           onPress={() => router.push(path as Route)}
         />
-      )}
+      )} */}
       {/* <View style={styles.overlay}>
         <View style={styles.overlayTextContainer}>
           <Text style={styles.overlayText}>{index}</Text>
