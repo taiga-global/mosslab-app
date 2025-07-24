@@ -1,4 +1,4 @@
 import { IsString } from 'class-validator';
-export class ConvertDto {
+export class GenerateDto {
   @IsString() key: string;
 }

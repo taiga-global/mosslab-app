@@ -10,7 +10,7 @@ interface GetPresignedUploadParams {
 }
 
 @Injectable()
-export class ConvertService {
+export class GenerateService {
   constructor(
     private s3: S3Service,
     private sqs: SqsService,
@@ -28,7 +28,7 @@ export class ConvertService {
     }
   }
 
-  async requestConvert(key: string) {
+  async requestGenerate(key: string) {
     const jobId = uuid();
     await this.sqs.sendJob({ jobId, key });
     await this.db.putPending(jobId, key);

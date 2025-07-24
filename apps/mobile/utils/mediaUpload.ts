@@ -23,7 +23,7 @@ export async function uploadToS3(putUrl: string, uri: string) {
 }
 
 export async function requestGenerate(key: string) {
-  return (await api.post('/convert', { key })).data.jobId;
+  return (await api.post('/generate', { key })).data.jobId;
 }
 
 export async function pollJobStatus(jobId: string) {
