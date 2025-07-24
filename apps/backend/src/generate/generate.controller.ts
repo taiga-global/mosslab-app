@@ -12,7 +12,7 @@ export class GenerateController {
     return await this.service.getPresignedUpload(dto);
   }
 
-  @Post('convert')
+  @Post('generate')
   convert(@Body() dto: GenerateDto) {
     return this.service.requestGenerate(dto.key);
   }
