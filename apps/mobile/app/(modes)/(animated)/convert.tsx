@@ -8,7 +8,7 @@ import api, { isError } from '@/api';
 import {
   downloadGif,
   pollJobStatus,
-  requestConvert,
+  requestGenerate,
   requestPresignedUrl,
   uploadToS3,
 } from '@/utils/mediaUpload';
@@ -47,7 +47,7 @@ export default function ConvertScreen() {
     }
 
     try {
-      jobId = await requestConvert(key);
+      jobId = await requestGenerate(key);
     } catch (error) {
       if (isError(error)) {
         console.log('변환 요청 실패: ' + error.message);

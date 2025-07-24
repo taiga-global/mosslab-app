@@ -1,5 +1,6 @@
 import api from '@/api';
 import * as FileSystem from 'expo-file-system';
+
 export async function requestPresignedUrl(
   uri: string,
   mimeType: string | string[],
@@ -21,7 +22,7 @@ export async function uploadToS3(putUrl: string, uri: string) {
   });
 }
 
-export async function requestConvert(key: string) {
+export async function requestGenerate(key: string) {
   return (await api.post('/convert', { key })).data.jobId;
 }
 
