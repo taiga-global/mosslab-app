@@ -48,7 +48,7 @@ export class JobProcessor implements OnModuleInit {
       }
 
       for (const m of Messages) {
-        const { jobId, key } = JSON.parse(m.Body ?? '') as JobMessage;
+        const { jobId, key, mode } = JSON.parse(m.Body ?? '') as JobMessage;
         if (!key) {
           console.error('SQS 메시지에 key가 없습니다:', m.Body);
           continue;
@@ -59,35 +59,73 @@ export class JobProcessor implements OnModuleInit {
           const srcUrl = await this.s3.getDownloadUrl(key);
           console.log('1. S3 원본 다운로드 URL 생성 성공:', srcUrl);
 
-          // 2) Replicate 호출 (예시)
-          let gifBuffer;
-          try {
-            console.log('2. Replicate 변환 시작:', srcUrl);
-            gifBuffer = await this.replicate.makeGif(srcUrl);
-            console.log('2. Replicate 변환 성공');
-          } catch (err) {
-            console.error('2. Replicate 변환 에러:', err);
-            // 실패 시
-            await this.db.markFailed(
-              jobId,
-              'Replicate 변환 에러: ' + String(err),
-            );
-            continue; // 다음 메시지로 넘어감
-          }
+          let gifBuffer, outKey;
 
-          // 3) 결과 업로드
-          const outKey = `results/${jobId}.gif`;
-          try {
-            console.log('3. S3 결과 업로드 시작:', outKey);
-            await this.s3.uploadImage(
-              Buffer.from(gifBuffer),
-              'image/gif',
-              outKey,
-            );
-            console.log('3. S3 결과 업로드 성공:', outKey);
-          } catch (err) {
-            console.error('3. S3 결과 업로드 에러:', err);
-            continue;
+          switch (mode) {
+            case 'animated':
+              // 2) Replicate 호출 (예시)
+
+              try {
+                console.log('2. Replicate 변환 시작:', srcUrl);
+                gifBuffer = await this.replicate.makeGif(srcUrl);
+                console.log('2. Replicate 변환 성공');
+              } catch (err) {
+                console.error('2. Replicate 변환 에러:', err);
+                // 실패 시
+                await this.db.markFailed(
+                  jobId,
+                  'Replicate 변환 에러: ' + String(err),
+                );
+                continue; // 다음 메시지로 넘어감
+              }
+
+              // 3) 결과 업로드
+              outKey = `results/${jobId}.gif`;
+              try {
+                console.log('3. S3 결과 업로드 시작:', outKey);
+                await this.s3.uploadImage(
+                  Buffer.from(gifBuffer),
+                  'image/gif',
+                  outKey,
+                );
+                console.log('3. S3 결과 업로드 성공:', outKey);
+              } catch (err) {
+                console.error('3. S3 결과 업로드 에러:', err);
+                continue;
+              }
+              break;
+            case 'audiolized':
+              try {
+                console.log('2. Replicate 변환 시작:', srcUrl);
+                gifBuffer = await this.replicate.makeGif(srcUrl);
+                console.log('2. Replicate 변환 성공');
+              } catch (err) {
+                console.error('2. Replicate 변환 에러:', err);
+                // 실패 시
+                await this.db.markFailed(
+                  jobId,
+                  'Replicate 변환 에러: ' + String(err),
+                );
+                continue; // 다음 메시지로 넘어감
+              }
+
+              // 3) 결과 업로드
+              outKey = `results/${jobId}.gif`;
+              try {
+                console.log('3. S3 결과 업로드 시작:', outKey);
+                await this.s3.uploadImage(
+                  Buffer.from(gifBuffer),
+                  'image/gif',
+                  outKey,
+                );
+                console.log('3. S3 결과 업로드 성공:', outKey);
+              } catch (err) {
+                console.error('3. S3 결과 업로드 에러:', err);
+                continue;
+              }
+              break;
+            default:
+              break;
           }
 
           // 4) 상태 업데이트

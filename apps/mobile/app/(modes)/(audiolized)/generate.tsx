@@ -4,23 +4,23 @@ import api, { isError } from '@/api';
 import ImageViewer from '@/components/ImageViewer';
 import { HeaderGradient } from '@/components/LayoutGradient';
 import {
-  downloadGif,
+  downloadAudio,
+  generateAudio,
   pollJobStatus,
-  requestGenerate,
   requestPresignedUrl,
   uploadToS3,
-} from '@/utils/mediaUpload';
+} from '@/utils/mediaUtils.ts';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'tamagui';
 const screenWidth = Dimensions.get('window').width;
 
 export default function GenerateScreen() {
   const { imageUri, mimeType } = useLocalSearchParams();
-  const [gifUrl, setGifUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
 
-  async function uploadAndGenerate() {
+  const uploadAndGenerate = useCallback(async () => {
     const uri = typeof imageUri === 'string' ? imageUri : imageUri?.[0];
     let putUrl, key, jobId;
 
@@ -45,7 +45,7 @@ export default function GenerateScreen() {
     }
 
     try {
-      jobId = await requestGenerate(key);
+      jobId = await generateAudio(key);
     } catch (error) {
       if (isError(error)) {
         console.log('변환 요청 실패: ' + error.message);
@@ -70,8 +70,8 @@ export default function GenerateScreen() {
         const {
           data: { outputUrl },
         } = await api.get(`/jobs/${jobId}`);
-        const gifUri = await downloadGif(outputUrl);
-        setGifUrl(gifUri);
+        const audioUrl = await downloadAudio(outputUrl);
+        setAudioUrl(audioUrl);
       } catch (error) {
         if (isError(error)) {
           console.log('변환 결과 다운로드 실패: ' + error.message);
@@ -80,7 +80,7 @@ export default function GenerateScreen() {
         return;
       }
     }
-  }
+  }, [imageUri, mimeType]);
 
   useEffect(() => {
     Alert.alert('API 실행', 'API를 실행할까요?', [
@@ -93,7 +93,7 @@ export default function GenerateScreen() {
         },
       },
     ]);
-  }, []);
+  }, [uploadAndGenerate]);
 
   return (
     isConfirmed && (
@@ -121,26 +121,31 @@ export default function GenerateScreen() {
         />
         <View className="flex items-center py-6 px-10">
           <Text className="text-2xl font-bold">
-            {gifUrl ? '변환 완료' : '변환 중'}
+            {audioUrl ? '변환 완료' : '변환 중'}
           </Text>
           <Text className="text-base text-gray-500 text-center">
-            {gifUrl
-              ? '이미지 변환이 완료되었습니다. 영상을 다시 생성하거나 moss eco에 바로 전송할 수 있습니다.'
-              : 'AI가 사진을 분석해, 생생하게 움직이는 영상으로 만들어 moss eco에서 생동감 있게 표현합니다.'}
+            {audioUrl
+              ? '사진을 분석하여 어울리는 배경음악을 생성했습니다. 다시 시도하거나 moss eco에 바로 전송할 수 있습니다.'
+              : 'AI가 사진을 분석해, 어울리는 배경음악을 만들어 moss eco에서 생동감 있게 표현합니다.'}
           </Text>
         </View>
-        {!gifUrl && <ActivityIndicator className="flex-1" size="large" />}
-        {gifUrl && (
-          <ImageViewer
-            key={gifUrl}
-            imgSource={
-              typeof gifUrl === 'string'
-                ? { uri: gifUrl }
-                : require('@/assets/images/animated/sample1.png')
-            }
-            height={screenWidth / 2}
-            width={screenWidth}
-          />
+        {!audioUrl && <ActivityIndicator className="flex-1" size="large" />}
+        {audioUrl && (
+          <View className="flex items-center">
+            <Text className="text-lg font-bold">Audio Preview</Text>
+            <Button
+              theme="primary"
+              onPress={() => {
+                const sound = new Audio(audioUrl);
+                sound.play();
+              }}
+              variant="outlined"
+            >
+              <Text className="text-white text-lg font-semibold">
+                Play Audio
+              </Text>
+            </Button>
+          </View>
         )}
       </View>
     )

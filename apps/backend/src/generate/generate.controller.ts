@@ -12,9 +12,14 @@ export class GenerateController {
     return await this.service.getPresignedUpload(dto);
   }
 
-  @Post('generate')
-  convert(@Body() dto: GenerateDto) {
-    return this.service.requestGenerate(dto.key);
+  @Post('generate/gif')
+  generateGif(@Body() dto: GenerateDto) {
+    return this.service.requestGenerate(dto.key, dto.mode);
+  }
+
+  @Post('generate/audio')
+  generateAudio(@Body() dto: GenerateDto) {
+    return this.service.requestGenerate(dto.key, dto.mode);
   }
 
   @Get('jobs/:jobId')

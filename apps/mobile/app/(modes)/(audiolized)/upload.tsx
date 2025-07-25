@@ -1,5 +1,5 @@
 import ImageViewer from '@/components/ImageViewer';
-import { BottomGradient, HeaderGradient } from '@/components/LayoutGradient';
+import { HeaderGradient } from '@/components/LayoutGradient';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -98,7 +98,6 @@ export default function UploadScreen() {
   return (
     <View className="flex-1">
       <HeaderGradient />
-      <BottomGradient />
       <View className="absolute left-0 right-0 bottom-10 z-20 px-10">
         <Button theme="primary" onPress={onPress}>
           <Text className="text-white text-lg font-semibold">사진 업로드</Text>

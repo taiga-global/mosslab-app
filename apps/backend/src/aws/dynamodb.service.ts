@@ -25,11 +25,11 @@ export class DynamoDbService {
   //   return this.ddb.send(new PutItemCommand(params));
   // }
 
-  async putPending(jobId: string, inputKey: string) {
+  async putPending(jobId: string, inputKey: string, mode: string) {
     return this.ddb.send(
       new PutItemCommand({
         TableName: this.table,
-        Item: marshall({ jobId, status: 'PENDING', inputKey }),
+        Item: marshall({ jobId, status: 'PENDING', inputKey, mode }),
       }),
     );
   }

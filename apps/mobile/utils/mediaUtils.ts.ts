@@ -22,8 +22,12 @@ export async function uploadToS3(putUrl: string, uri: string) {
   });
 }
 
-export async function requestGenerate(key: string) {
-  return (await api.post('/generate', { key })).data.jobId;
+export async function generateGif(key: string) {
+  return (await api.post('/generate/gif', { key })).data.jobId;
+}
+
+export async function generateAudio(key: string) {
+  return (await api.post('/generate/audio', { key })).data.jobId;
 }
 
 export async function pollJobStatus(jobId: string) {
@@ -37,6 +41,12 @@ export async function pollJobStatus(jobId: string) {
 
 export async function downloadGif(outputUrl: string) {
   const localUri = FileSystem.cacheDirectory + `result_${Date.now()}.gif`;
+  const downloadRes = await FileSystem.downloadAsync(outputUrl, localUri);
+  return downloadRes.uri;
+}
+
+export async function downloadAudio(outputUrl: string) {
+  const localUri = FileSystem.cacheDirectory + `result_${Date.now()}.mp3`;
   const downloadRes = await FileSystem.downloadAsync(outputUrl, localUri);
   return downloadRes.uri;
 }

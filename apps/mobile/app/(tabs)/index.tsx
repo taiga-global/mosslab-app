@@ -1,6 +1,5 @@
 // import { renderItem } from '@/utils/render-item';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
 import { View } from 'react-native';
 import ModesCarousel from '../../components/ModesCarousel';
 
@@ -12,7 +11,6 @@ export default function HomeScreen() {
         style={{ width: 140, height: 75 }}
       />
       <View className="flex-1 flex-col gap-3 justify-center">
-        <Link href={'../(modes)/(animated)/upload'}>Animated</Link>
         <ModesCarousel />
       </View>
     </View>

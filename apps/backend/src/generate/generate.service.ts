@@ -28,10 +28,10 @@ export class GenerateService {
     }
   }
 
-  async requestGenerate(key: string) {
+  async requestGenerate(key: string, mode: string) {
     const jobId = uuid();
-    await this.sqs.sendJob({ jobId, key });
-    await this.db.putPending(jobId, key);
+    await this.sqs.sendJob({ jobId, key, mode });
+    await this.db.putPending(jobId, key, mode);
     return { jobId };
   }
 

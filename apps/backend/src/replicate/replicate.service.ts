@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import fetch, { Response } from 'node-fetch';
 import Replicate, { FileOutput } from 'replicate';
+import { OpenAiService } from 'src/openai/openai.service';
 import { z } from 'zod';
 
 /* ─────────────── api2convert 응답 스키마 ─────────────── */
@@ -37,6 +38,7 @@ function toUrl(val: unknown): string {
 /* ─────────────────── 서비스 ─────────────────── */
 @Injectable()
 export class ReplicateService {
+  constructor(private openAiService: OpenAiService) {}
   private replicate = new Replicate({
     auth: process.env.REPLICATE_API_TOKEN,
   });
@@ -65,7 +67,7 @@ export class ReplicateService {
 
   /* 2️⃣ Seedance-1-Pro → MP4 URL */
   private async seedancePro(img: string): Promise<string> {
-    const out = await this.replicate.run('bytedance/seedance-1-lite', {
+    const out = await this.replicate.run('bytedance/seedance-1-pro', {
       input: {
         fps: 24,
         image: img,
@@ -81,15 +83,119 @@ export class ReplicateService {
 
   /* 3️⃣ api2convert : MP4 → 64×32 GIF(Buffer) */
   private async mp4ToGif(mp4Url: string): Promise<Buffer> {
-    /* 3-1 Job 생성 */
-    // const form = new FormData();
-    // form.append('input[0][type]', 'remote');
-    // form.append('input[0][source]', mp4Url);
-    // form.append('conversion[0][category]', 'image');
-    // form.append('conversion[0][target]', 'gif');
-    // form.append('conversion[0][options][width]', '64');
-    // form.append('conversion[0][options][height]', '32');
+    const createRes = await fetch('https://api.api2convert.com/v2/jobs', {
+      method: 'POST',
+      headers: {
+        'x-oc-api-key': process.env.API2CONVERT_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        input: [
+          {
+            type: 'remote',
+            source: mp4Url,
+          },
+        ],
+        conversion: [
+          {
+            category: 'image',
+            target: 'gif',
+            options: {
+              width: 64,
+              height: 32,
+            },
+          },
+        ],
+      }),
+    });
+    if (!createRes.ok)
+      throw new InternalServerErrorException(createRes.statusText);
 
+    const { id } = await safeJson(createRes, Api2CreateSchema); // ← id 사용
+
+    /* 3-2 상태 polling */
+    const statusUrl = `https://api.api2convert.com/v2/jobs/${id}`;
+    let gifUrl: string | undefined;
+
+    while (!gifUrl) {
+      const res = await fetch(statusUrl, {
+        headers: { 'x-oc-api-key': process.env.API2CONVERT_API_KEY! },
+      });
+      const data = await safeJson(res, Api2StatusSchema);
+
+      const code = data.status.code;
+      if (code === 'failed')
+        throw new InternalServerErrorException('Conversion failed');
+
+      if (code === 'completed' && data.output?.length)
+        gifUrl = data.output[0].uri;
+      else await new Promise((r) => setTimeout(r, 1500)); // processing 등
+    }
+
+    /* 3-3 GIF 다운로드 */
+    const gifRes = await fetch(gifUrl);
+    if (!gifRes.ok)
+      throw new InternalServerErrorException('GIF download failed');
+
+    return gifRes.buffer();
+  }
+
+  async makeMp3(imageUrl: string): Promise<Buffer> {
+    const description = await this.blip2(imageUrl);
+    const atmosphere =
+      await this.openAiService.getTextFromImageDescription(description);
+    const mp3 = await this.stableAudioOpen(atmosphere);
+    return mp3;
+  }
+
+  private async blip2(img: string): Promise<string> {
+    const out = await this.replicate.run(
+      'andreasjansson/blip-2:f677695e5e89f8b236e52ecd1d3f01beb44c34606419bcc19345e046d8f786f9',
+      {
+        input: {
+          caption: false,
+          image: img,
+          question:
+            'Give a short, vivid description of this image’s overall mood, setting, and key elements (max 12 words) so it can be used directly as a text prompt for generating matching background music.',
+          temperature: 0.7,
+          use_nucleus_sampling: true,
+        },
+      },
+    );
+    const url = toUrl(out);
+    console.log(out);
+    console.log(url);
+    return url;
+  }
+
+  private async stableAudioOpen(prompt: string): Promise<string> {
+    const output = await this.replicate.run(
+      'stackadoc/stable-audio-open-1.0:9aff84a639f96d0f7e6081cdea002d15133d0043727f849c40abdd166b7c75a8',
+      {
+        input: {
+          seed: -1,
+          steps: 100,
+          prompt: prompt,
+          cfg_scale: 6,
+          sigma_max: 500,
+          sigma_min: 0.03,
+          batch_size: 1,
+          sampler_type: 'dpmpp-3m-sde',
+          seconds_start: 0,
+          seconds_total: 10,
+          negative_prompt: '',
+          init_noise_level: 1,
+        },
+      },
+    );
+
+    const url = toUrl(output);
+    console.log(url);
+    console.log(output);
+    return url;
+  }
+
+  private async mp4ToGif(mp4Url: string): Promise<Buffer> {
     const createRes = await fetch('https://api.api2convert.com/v2/jobs', {
       method: 'POST',
       headers: {
