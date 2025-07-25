@@ -34,14 +34,17 @@ export class DynamoDbService {
     );
   }
 
-  async markDone(jobId: string, outputKey: string) {
+  async markDone(jobId: string, downloadUrl: string) {
     return this.ddb.send(
       new UpdateItemCommand({
         TableName: this.table,
         Key: marshall({ jobId }),
-        UpdateExpression: 'SET #s = :s, outputKey = :o',
+        UpdateExpression: 'SET #s = :s, downloadUrl = :d',
         ExpressionAttributeNames: { '#s': 'status' },
-        ExpressionAttributeValues: marshall({ ':s': 'DONE', ':o': outputKey }),
+        ExpressionAttributeValues: marshall({
+          ':s': 'DONE',
+          ':d': downloadUrl,
+        }),
       }),
     );
   }
