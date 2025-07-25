@@ -9,11 +9,11 @@ import {
   InternalServerErrorException,
   OnModuleInit,
 } from '@nestjs/common';
-import { BackupService } from 'src/backup/backup.service';
 import { OpenAiService } from 'src/openai/openai.service';
 import { JobMessage } from 'type';
 import { DynamoDbService } from '../aws/dynamodb.service';
 import { S3Service } from '../aws/s3.service';
+import { BackupService } from '../backup/backup.service';
 import { ReplicateService } from '../replicate/replicate.service';
 
 @Injectable()
