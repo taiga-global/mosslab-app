@@ -23,7 +23,7 @@ export async function uploadToS3(putUrl: string, uri: string) {
 }
 
 export async function generate(key: string, mode: string) {
-  return (await api.post(`/generate/${mode}`, { key })).data.jobId;
+  return (await api.post(`/generate`, { key, mode })).data.jobId;
 }
 
 export async function pollJobStatus(jobId: string) {

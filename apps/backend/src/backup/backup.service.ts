@@ -3,7 +3,6 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import fetch from 'node-fetch';
 import { Readable } from 'node:stream';
-import { ReadableStream as NodeReadableStream } from 'node:stream/web';
 
 @Injectable()
 export class BackupService {
@@ -33,9 +32,7 @@ export class BackupService {
       throw new InternalServerErrorException('Response body is null');
     }
 
-    const nodeStream = Readable.fromWeb(
-      res.body as unknown as NodeReadableStream<any>,
-    );
+    const nodeStream = Readable.from(res.body); // Node.js 스트림으로 변환
     /* 3. S3 스트리밍 업로드 (메모리 O(1)) */
     await this.s3.send(
       new PutObjectCommand({

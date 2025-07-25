@@ -181,17 +181,29 @@ export class JobProcessor implements OnModuleInit {
     }
   }
 
-  private async processOne(m: Message): Promise<void> {
+  private async processOne(m: Message): Promise<boolean> {
     const { jobId, key, mode } = JSON.parse(m.Body ?? '') as JobMessage;
     if (!key) throw new InternalServerErrorException('key missing in message');
 
-    /* 1. 원본 S3 presign */
-    console.log('1. S3 원본 다운로드 URL 생성 시작:', key);
-    const srcUrl = await this.s3.getDownloadUrl(key);
-    console.log('1. S3 원본 다운로드 URL 생성 성공:', srcUrl);
+    let srcUrl = '';
     let cdnUrl = '';
     let outKey = '';
     let mimeType = 'image/gif'; // 기본값, 필요시 변경
+
+    /* 1. 원본 S3 presign */
+    try {
+      console.log('1. S3 원본 다운로드 URL 생성 시작:', key);
+      srcUrl = await this.s3.getDownloadUrl(key);
+      console.log('1. S3 원본 다운로드 URL 생성 성공:', srcUrl);
+    } catch (err) {
+      console.error('1. S3 원본 다운로드 URL 생성 에러:', err);
+      await this.db.markFailed(
+        jobId,
+        '1. S3 원본 다운로드 URL 생성 에러: ' + String(err),
+      );
+      return false;
+    }
+
     /* 2. 변환 */
     if (mode === 'animated') {
       try {
@@ -202,6 +214,7 @@ export class JobProcessor implements OnModuleInit {
       } catch (err) {
         console.error('2. Animated 변환 에러:', err);
         await this.db.markFailed(jobId, 'Animated 변환 에러: ' + String(err));
+        return false;
       }
     } else {
       try {
@@ -214,6 +227,7 @@ export class JobProcessor implements OnModuleInit {
       } catch (err) {
         console.error('2. Audiolized 변환 에러:', err);
         await this.db.markFailed(jobId, 'Audiolized 변환 에러: ' + String(err));
+        return false;
       }
     }
 
@@ -224,6 +238,7 @@ export class JobProcessor implements OnModuleInit {
       console.log('3. S3 백업 성공:', jobId, cdnUrl);
     } catch (err) {
       console.error('3. S3 백업 에러:', err);
+      return false;
     }
 
     /* 4. 상태 DONE 기록 (cdn) */
@@ -232,6 +247,9 @@ export class JobProcessor implements OnModuleInit {
       await this.db.markDone(jobId, cdnUrl);
     } catch (err) {
       console.error('4. DB 상태 업데이트 에러:', err);
+      return false;
     }
+
+    return true;
   }
 }
