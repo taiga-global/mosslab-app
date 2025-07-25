@@ -5,7 +5,7 @@ import ImageViewer from '@/components/ImageViewer';
 import { HeaderGradient } from '@/components/LayoutGradient';
 import {
   downloadAudio,
-  generateAudio,
+  generate,
   pollJobStatus,
   requestPresignedUrl,
   uploadToS3,
@@ -45,7 +45,7 @@ export default function GenerateScreen() {
     }
 
     try {
-      jobId = await generateAudio(key);
+      jobId = await generate(key, 'audiolized');
     } catch (error) {
       if (isError(error)) {
         console.log('변환 요청 실패: ' + error.message);

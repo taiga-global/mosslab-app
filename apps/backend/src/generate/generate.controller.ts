@@ -7,18 +7,13 @@ import { GenerateService } from './generate.service';
 export class GenerateController {
   constructor(private service: GenerateService) {}
 
-  @Post('upload-url')
+  @Post('upload/url')
   async getUpload(@Body() dto: UploadUrlDto) {
     return await this.service.getPresignedUpload(dto);
   }
 
-  @Post('generate/gif')
-  generateGif(@Body() dto: GenerateDto) {
-    return this.service.requestGenerate(dto.key, dto.mode);
-  }
-
-  @Post('generate/audio')
-  generateAudio(@Body() dto: GenerateDto) {
+  @Post('generate')
+  convert(@Body() dto: GenerateDto) {
     return this.service.requestGenerate(dto.key, dto.mode);
   }
 

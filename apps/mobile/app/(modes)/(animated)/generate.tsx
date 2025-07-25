@@ -7,7 +7,7 @@ import { HeaderGradient } from '@/components/LayoutGradient';
 import api, { isError } from '@/api';
 import {
   downloadGif,
-  generateGif,
+  generate,
   pollJobStatus,
   requestPresignedUrl,
   uploadToS3,
@@ -47,7 +47,7 @@ export default function GenerateScreen() {
     }
 
     try {
-      jobId = await generateGif(key);
+      jobId = await generate(key, 'animated');
     } catch (error) {
       if (isError(error)) {
         console.log('변환 요청 실패: ' + error.message);

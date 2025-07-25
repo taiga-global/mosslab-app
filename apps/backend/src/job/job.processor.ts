@@ -41,7 +41,7 @@ export class JobProcessor implements OnModuleInit {
         }),
       );
       if (!Messages?.length) {
-        console.error('Message가 없습니다:', Messages);
+        // console.error('Message가 없습니다:', Messages);
         return;
       } else {
         console.log('Message: ', Messages);

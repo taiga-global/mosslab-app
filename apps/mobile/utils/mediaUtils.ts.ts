@@ -6,7 +6,7 @@ export async function requestPresignedUrl(
   mimeType: string | string[],
 ) {
   const { putUrl, key } = (
-    await api.post('upload-url', {
+    await api.post('/upload/url', {
       filename: uri.split('/').pop(),
       mime: mimeType,
     })
@@ -22,12 +22,8 @@ export async function uploadToS3(putUrl: string, uri: string) {
   });
 }
 
-export async function generateGif(key: string) {
-  return (await api.post('/generate/gif', { key })).data.jobId;
-}
-
-export async function generateAudio(key: string) {
-  return (await api.post('/generate/audio', { key })).data.jobId;
+export async function generate(key: string, mode: string) {
+  return (await api.post(`/generate/${mode}`, { key })).data.jobId;
 }
 
 export async function pollJobStatus(jobId: string) {
