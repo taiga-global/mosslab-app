@@ -27,7 +27,7 @@ export class JobProcessor implements OnModuleInit {
     private s3: S3Service,
     private db: DynamoDbService,
     private openAi: OpenAiService,
-    private readonly backup: BackupService,
+    private backup: BackupService,
   ) {}
 
   onModuleInit() {
