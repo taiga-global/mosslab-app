@@ -26,13 +26,16 @@ export async function generate(key: string, mode: string) {
   return (await api.post(`/generate`, { key, mode })).data.jobId;
 }
 
-export async function pollJobStatus(jobId: string) {
-  let status = 'PENDING';
-  while (status === 'PENDING') {
-    status = (await api.get(`/jobs/${jobId}`)).data.status;
-    await new Promise((r) => setTimeout(r, 20000));
-  }
-  return status;
+export async function getDownloadUrl(jobId: string) {
+  // let status = 'PENDING';
+  // let outputUrl = '';
+  // while (status === 'PENDING') {
+  const { data } = await api.get(`/jobs/${jobId}`);
+  // status = response.data.status;
+  // outputUrl = response.data.outputUrl;
+  // await new Promise((r) => setTimeout(r, 2000));
+  // }
+  return data.outputUrl;
 }
 
 export async function downloadGif(outputUrl: string) {

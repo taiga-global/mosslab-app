@@ -35,23 +35,26 @@ export class GenerateService {
     return { jobId };
   }
 
-  async getStatus(jobId: string) {
-    const job = (await this.db.get(jobId)) as {
-      status: string;
-      outputKey?: string;
-    } | null;
-    let outputUrl = '';
-    let status = 'PENDING'; // 기본값(혹은 null, undefined 등)
-    if (job) {
-      status = job.status;
-      if (job.outputKey && job.status === 'DONE') {
-        outputUrl = await this.s3.getDownloadUrl(job.outputKey);
+  async getDownloadUrl(jobId: string) {
+    let downloadUrl = '';
+    let status: string;
+
+    do {
+      const job = (await this.db.get(jobId)) as {
+        status: string;
+        downloadUrl?: string;
+      } | null;
+
+      status = job?.status ?? 'PENDING';
+      if (job?.downloadUrl && status === 'DONE') {
+        downloadUrl = job.downloadUrl;
       }
-    }
-    return {
-      status,
-      outputUrl,
-      // 필요하다면 outputKey 등 추가
-    };
+
+      if (status === 'PENDING') {
+        await new Promise((resolve) => setTimeout(resolve, 2000)); // 2초 대기
+      }
+    } while (status === 'PENDING');
+
+    return { status, downloadUrl };
   }
 }

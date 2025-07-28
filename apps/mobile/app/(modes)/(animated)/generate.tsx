@@ -4,11 +4,11 @@ import { ActivityIndicator, Alert, Dimensions, Text, View } from 'react-native';
 import ImageViewer from '@/components/ImageViewer';
 import { HeaderGradient } from '@/components/LayoutGradient';
 
-import api, { isError } from '@/api';
+import { isError } from '@/api';
 import {
   downloadGif,
   generate,
-  pollJobStatus,
+  getDownloadUrl,
   requestPresignedUrl,
   uploadToS3,
 } from '@/utils/mediaUtils.ts';
@@ -57,9 +57,9 @@ export default function GenerateScreen() {
       return;
     }
 
-    let status;
+    let outputUrl;
     try {
-      status = await pollJobStatus(jobId);
+      outputUrl = await getDownloadUrl(jobId);
     } catch (error) {
       if (isError(error)) {
         console.log('변환 상태 요청 실패: ' + error.message);
@@ -68,20 +68,17 @@ export default function GenerateScreen() {
       return;
     }
 
-    if (status === 'DONE') {
-      try {
-        const {
-          data: { outputUrl },
-        } = await api.get(`/jobs/${jobId}`);
-        const gifUri = await downloadGif(outputUrl);
-        setGifUrl(gifUri);
-      } catch (error) {
-        if (isError(error)) {
-          console.log('변환 결과 다운로드 실패: ' + error.message);
-          alert('변환 결과 다운로드 실패: ' + error.message);
-        }
-        return;
+    console.log('결과 URL:', outputUrl);
+
+    try {
+      const gifUri = await downloadGif(outputUrl);
+      setGifUrl(gifUri);
+    } catch (error) {
+      if (isError(error)) {
+        console.log('변환 결과 다운로드 실패: ' + error.message);
+        alert('변환 결과 다운로드 실패: ' + error.message);
       }
+      return;
     }
   }, [imageUri, mimeType]);
 

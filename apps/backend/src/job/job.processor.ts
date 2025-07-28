@@ -244,24 +244,24 @@ export class JobProcessor implements OnModuleInit {
       }
     }
 
-    /* 3. S3 백업(스트리밍)  ← 여기서 완료될 때까지 await */
+    /* 4. 상태 DONE 기록 (cdn) */
     try {
-      console.log('3. S3 백업 시작:', jobId, cdnUrl);
-      await this.backup.copyFromUrl(cdnUrl, outKey, mimeType);
-      console.log('3. S3 백업 성공:', jobId, cdnUrl);
+      console.log('3. DB 상태 업데이트 시작:', jobId, cdnUrl);
+      await this.db.markDone(jobId, cdnUrl);
     } catch (err) {
-      console.error('3. S3 백업 에러:', err);
-      await this.db.markFailed(jobId, 'S3 백업 에러: ' + String(err));
+      console.error('3. DB 상태 업데이트 에러:', err);
+      await this.db.markFailed(jobId, 'DB 상태 업데이트 에러: ' + String(err));
       return false;
     }
 
-    /* 4. 상태 DONE 기록 (cdn) */
+    /* 3. S3 백업(스트리밍)  ← 여기서 완료될 때까지 await */
     try {
-      console.log('4. DB 상태 업데이트 시작:', jobId, cdnUrl);
-      await this.db.markDone(jobId, cdnUrl);
+      console.log('4. S3 백업 시작:', jobId, cdnUrl);
+      await this.backup.copyFromUrl(cdnUrl, outKey, mimeType);
+      console.log('4. S3 백업 성공:', jobId, cdnUrl);
     } catch (err) {
-      console.error('4. DB 상태 업데이트 에러:', err);
-      await this.db.markFailed(jobId, 'DB 상태 업데이트 에러: ' + String(err));
+      console.error('4. S3 백업 에러:', err);
+      await this.db.markFailed(jobId, '4. S3 백업 에러: ' + String(err));
       return false;
     }
 

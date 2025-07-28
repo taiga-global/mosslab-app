@@ -19,6 +19,6 @@ export class GenerateController {
 
   @Get('jobs/:jobId')
   status(@Param('jobId') jobId: string) {
-    return this.service.getStatus(jobId);
+    return this.service.getDownloadUrl(jobId);
   }
 }
