@@ -31,11 +31,12 @@ export async function getDownloadUrl(jobId: string) {
   // let outputUrl = '';
   // while (status === 'PENDING') {
   const { data } = await api.get(`/jobs/${jobId}`);
+  console.log(data);
   // status = response.data.status;
   // outputUrl = response.data.outputUrl;
   // await new Promise((r) => setTimeout(r, 2000));
   // }
-  return data.outputUrl;
+  return data.downloadUrl;
 }
 
 export async function downloadGif(outputUrl: string) {

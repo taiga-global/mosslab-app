@@ -44,6 +44,7 @@ export class GenerateService {
         status: string;
         downloadUrl?: string;
       } | null;
+      console.log('Job 상태:', job);
 
       status = job?.status ?? 'PENDING';
       if (job?.downloadUrl && status === 'DONE') {
@@ -51,7 +52,7 @@ export class GenerateService {
       }
 
       if (status === 'PENDING') {
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // 2초 대기
+        await new Promise((resolve) => setTimeout(resolve, 10000)); // 10초 대기
       }
     } while (status === 'PENDING');
 
