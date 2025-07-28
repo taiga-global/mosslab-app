@@ -32,6 +32,7 @@ export default function GenerateScreen() {
       if (isError(error)) {
         console.log('Presigned URL 요청 실패: ' + error.message);
         alert('Presigned URL 요청 실패: ' + error.message);
+        router.back();
       }
       return;
     }

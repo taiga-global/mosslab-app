@@ -16,12 +16,7 @@ export class BackupService {
   ): Promise<void> {
     /* 1. 다운로드 스트림 확보 */
     const res = await fetch(srcUrl);
-    if (!res.ok) {
-      throw new InternalServerErrorException(
-        `Download failed: ${res.status} ${res.statusText}`,
-      );
-    }
-
+    console.log('res:', res);
     if (!res.ok) {
       throw new InternalServerErrorException(
         `Download failed: ${res.status} ${res.statusText}`,
@@ -32,6 +27,13 @@ export class BackupService {
       throw new InternalServerErrorException('Response body is null');
     }
 
+    const contentLength = res.headers.get('content-length');
+    if (!contentLength) {
+      throw new InternalServerErrorException(
+        'Content-Length header is missing',
+      );
+    }
+
     const nodeStream = Readable.from(res.body); // Node.js 스트림으로 변환
     /* 3. S3 스트리밍 업로드 (메모리 O(1)) */
     await this.s3.send(
@@ -40,6 +42,7 @@ export class BackupService {
         Key: dstKey,
         Body: nodeStream,
         ContentType: mimeType,
+        ContentLength: parseInt(contentLength, 10),
       }),
     );
   }

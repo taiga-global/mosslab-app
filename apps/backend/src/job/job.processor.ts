@@ -57,18 +57,18 @@ export class JobProcessor implements OnModuleInit {
       }
 
       for (const msg of Messages) {
-        const ok = await this.processOne(msg).catch((e) => {
+        await this.processOne(msg).catch((e) => {
           console.error('[FAIL]', e);
-          return false;
+          // return false;
         });
-        if (ok) {
-          await this.sqs.send(
-            new DeleteMessageCommand({
-              QueueUrl: this.queueUrl,
-              ReceiptHandle: msg.ReceiptHandle,
-            }),
-          );
-        }
+        // if (ok) {
+        //   await this.sqs.send(
+        //     new DeleteMessageCommand({
+        //       QueueUrl: this.queueUrl,
+        //       ReceiptHandle: msg.ReceiptHandle,
+        //     }),
+        //   );
+        // }
       }
 
       // for (const m of Messages) {
@@ -185,6 +185,19 @@ export class JobProcessor implements OnModuleInit {
     const { jobId, key, mode } = JSON.parse(m.Body ?? '') as JobMessage;
     if (!key) throw new InternalServerErrorException('key missing in message');
 
+    try {
+      console.log('0. SQS 메시지 삭제 시작');
+      await this.sqs.send(
+        new DeleteMessageCommand({
+          QueueUrl: this.queueUrl,
+          ReceiptHandle: m.ReceiptHandle,
+        }),
+      );
+      console.log('0. SQS 메시지 삭제 성공');
+    } catch (err) {
+      console.error('0. SQS 메시지 삭제 에러:', err);
+    }
+
     let srcUrl = '';
     let cdnUrl = '';
     let outKey = '';
@@ -238,6 +251,7 @@ export class JobProcessor implements OnModuleInit {
       console.log('3. S3 백업 성공:', jobId, cdnUrl);
     } catch (err) {
       console.error('3. S3 백업 에러:', err);
+      await this.db.markFailed(jobId, 'S3 백업 에러: ' + String(err));
       return false;
     }
 
@@ -247,6 +261,7 @@ export class JobProcessor implements OnModuleInit {
       await this.db.markDone(jobId, cdnUrl);
     } catch (err) {
       console.error('4. DB 상태 업데이트 에러:', err);
+      await this.db.markFailed(jobId, 'DB 상태 업데이트 에러: ' + String(err));
       return false;
     }
 
