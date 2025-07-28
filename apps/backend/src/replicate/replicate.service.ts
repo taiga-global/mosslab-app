@@ -58,17 +58,14 @@ export class ReplicateService {
 
   /* 1️⃣ Flux-Kontext-Pro → JPG URL */
   private async fluxKontextPro(src: string): Promise<string> {
-    const out = await this.replicate.run(
-      'black-forest-labs/flux-kontext-lite',
-      {
-        input: {
-          prompt:
-            'Make the background solid black with absolutely nothing else in it, rendered as a 90s cartoon.',
-          input_image: src,
-          output_format: 'jpg',
-        },
+    const out = await this.replicate.run('black-forest-labs/flux-kontext-pro', {
+      input: {
+        prompt:
+          'Make the background solid black with absolutely nothing else in it, rendered as a 90s cartoon.',
+        input_image: src,
+        output_format: 'jpg',
       },
-    );
+    });
     const url = toUrl(out);
     console.log(url);
     return url;
@@ -76,7 +73,7 @@ export class ReplicateService {
 
   /* 2️⃣ Seedance-1-Pro → MP4 URL */
   private async seedancePro(img: string): Promise<string> {
-    const out = await this.replicate.run('bytedance/seedance-1-pro', {
+    const out = await this.replicate.run('bytedance/seedance-1-lite', {
       input: {
         fps: 24,
         image: img,
