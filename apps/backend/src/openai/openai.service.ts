@@ -14,13 +14,22 @@ export class OpenAiService {
     const description = `Analyze the mood of the image at this URL: ${imageUrl}`;
 
     try {
-      const response = await this.client.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: description }],
-        max_tokens: 300,
+      const completion = await this.client.chat.completions.create({
+        messages: [{ role: 'developer', content: description }],
+        model: 'gpt-5',
+        store: true,
       });
+      console.log(completion);
 
-      return response.choices[0].message.content ?? '';
+      return completion.choices[0].message.content ?? '';
+
+      // const response = await this.client.chat.completions.create({
+      //   model: 'gpt-4o-mini',
+      //   messages: [{ role: 'user', content: description }],
+      //   max_tokens: 300,
+      // });
+
+      // return response.choices[0].message.content ?? '';
     } catch (error) {
       console.error('Error extracting mood from image:', error);
       throw new Error('Failed to extract mood from image');
