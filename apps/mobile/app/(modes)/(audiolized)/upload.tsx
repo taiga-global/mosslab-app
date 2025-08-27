@@ -51,7 +51,7 @@ export default function UploadScreen() {
 
     if (!result.canceled) {
       router.push({
-        pathname: '../convert',
+        pathname: '../generate',
         params: {
           imageUri: result.assets[0].uri,
           mimeType: result.assets[0].mimeType,

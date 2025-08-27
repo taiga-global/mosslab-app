@@ -14,14 +14,12 @@ export class OpenAiService {
     const description = `Analyze the mood of the image at this URL: ${imageUrl}`;
 
     try {
-      const response = await this.client.completions.create({
+      const response = await this.client.responses.create({
         model: 'gpt-3.5-turbo',
-        prompt: description,
-        temperature: 0.7,
-        max_tokens: 50,
+        input: description,
       });
 
-      return response.choices[0].text.trim();
+      return response.output_text;
     } catch (error) {
       console.error('Error extracting mood from image:', error);
       throw new Error('Failed to extract mood from image');

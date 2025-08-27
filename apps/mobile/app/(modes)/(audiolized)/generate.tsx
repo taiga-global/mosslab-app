@@ -1,12 +1,12 @@
 import { ActivityIndicator, Alert, Dimensions, Text, View } from 'react-native';
 // import ImagePicker from 'react-native-image-crop-picker';
-import api, { isError } from '@/api';
+import { isError } from '@/api';
 import ImageViewer from '@/components/ImageViewer';
 import { HeaderGradient } from '@/components/LayoutGradient';
 import {
   downloadAudio,
   generate,
-  pollJobStatus,
+  getDownloadUrl,
   requestPresignedUrl,
   uploadToS3,
 } from '@/utils/mediaUtils.ts';
@@ -54,9 +54,9 @@ export default function GenerateScreen() {
       return;
     }
 
-    let status;
+    let outputUrl;
     try {
-      status = await pollJobStatus(jobId);
+      outputUrl = await getDownloadUrl(jobId);
     } catch (error) {
       if (isError(error)) {
         console.log('변환 상태 요청 실패: ' + error.message);
@@ -65,20 +65,15 @@ export default function GenerateScreen() {
       return;
     }
 
-    if (status === 'DONE') {
-      try {
-        const {
-          data: { outputUrl },
-        } = await api.get(`/jobs/${jobId}`);
-        const audioUrl = await downloadAudio(outputUrl);
-        setAudioUrl(audioUrl);
-      } catch (error) {
-        if (isError(error)) {
-          console.log('변환 결과 다운로드 실패: ' + error.message);
-          alert('변환 결과 다운로드 실패: ' + error.message);
-        }
-        return;
+    try {
+      const audioUrl = await downloadAudio(outputUrl);
+      setAudioUrl(audioUrl);
+    } catch (error) {
+      if (isError(error)) {
+        console.log('변환 결과 다운로드 실패: ' + error.message);
+        alert('변환 결과 다운로드 실패: ' + error.message);
       }
+      return;
     }
   }, [imageUri, mimeType]);
 

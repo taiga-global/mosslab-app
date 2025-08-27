@@ -68,8 +68,6 @@ export default function GenerateScreen() {
       return;
     }
 
-    console.log('결과 URL:', outputUrl);
-
     try {
       const gifUri = await downloadGif(outputUrl);
       setGifUrl(gifUri);
@@ -100,13 +98,7 @@ export default function GenerateScreen() {
       <View className="flex-1">
         <HeaderGradient />
         <View className="absolute left-0 right-0 bottom-10 z-20 px-10">
-          <Button
-            theme="primary"
-            onPress={() => {
-              router.back();
-            }}
-            variant="outlined"
-          >
+          <Button theme="primary" onPress={router.back} variant="outlined">
             <Text className="text-white text-lg font-semibold">취소</Text>
           </Button>
         </View>

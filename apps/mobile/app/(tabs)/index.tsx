@@ -1,7 +1,7 @@
 // import { renderItem } from '@/utils/render-item';
 import { Image } from 'expo-image';
 import { View } from 'react-native';
-import ModesCarousel from '../../components/ModesCarousel';
+import ModesList from '../../components/ModesList';
 
 export default function HomeScreen() {
   return (
@@ -10,8 +10,8 @@ export default function HomeScreen() {
         source={require('@/assets/images/moss-eco.png')}
         style={{ width: 140, height: 75 }}
       />
-      <View className="flex-1 flex-col gap-3 justify-center">
-        <ModesCarousel />
+      <View className="flex-1">
+        <ModesList />
       </View>
     </View>
   );
