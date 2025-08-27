@@ -70,7 +70,7 @@ export const SlideItem: React.FC<Props> = (props) => {
   return (
     <View
       testID={testID}
-      className="h-fit w-[320px] rounded-3xl p-6 px-10 flex items-center bg-white"
+      className="h-fit w-[320px] rounded-full p-6 px-10 flex items-center bg-white"
       style={[
         styles.shadowContainer,
         props.style, // 외부에서 전달된 스타일도 적용
