@@ -12,6 +12,7 @@ export class OpenAiService {
   }
   async extractMoodFromImage(imageUrl: string): Promise<string> {
     const description = `Analyze the mood of the image at this URL: ${imageUrl}`;
+    console.log(description);
 
     try {
       const completion = await this.client.chat.completions.create({
