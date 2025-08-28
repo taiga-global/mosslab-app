@@ -16,11 +16,17 @@ export class OpenAiService {
 
     try {
       const completion = await this.client.chat.completions.create({
-        messages: [{ role: 'developer', content: description }],
-        model: 'gpt-5',
-        store: true,
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Analyze the mood of this image' },
+              { type: 'image_url', image_url: { url: imageUrl } }, // 단순 URL은 public이어야 함
+            ],
+          },
+        ],
       });
-      console.log(completion);
 
       return completion.choices[0].message.content ?? '';
 
