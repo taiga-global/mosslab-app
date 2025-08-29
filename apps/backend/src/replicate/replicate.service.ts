@@ -73,7 +73,7 @@ export class ReplicateService {
 
   /* 2️⃣ Seedance-1-Pro → MP4 URL */
   private async seedancePro(img: string): Promise<string> {
-    const out = await this.replicate.run('bytedance/seedance-1-lite', {
+    const out = await this.replicate.run('bytedance/seedance-1-pro', {
       input: {
         fps: 24,
         image: img,
