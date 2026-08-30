@@ -27,16 +27,15 @@ export async function generate(key: string, mode: string) {
 }
 
 export async function getDownloadUrl(jobId: string) {
-  // let status = 'PENDING';
-  // let outputUrl = '';
-  // while (status === 'PENDING') {
-  const { data } = await api.get(`/jobs/${jobId}`);
-  console.log(data);
-  // status = response.data.status;
-  // outputUrl = response.data.outputUrl;
-  // await new Promise((r) => setTimeout(r, 2000));
-  // }
-  return data.downloadUrl;
+  const deadline = Date.now() + 10 * 60 * 1000;
+  while (Date.now() < deadline) {
+    const { data } = await api.get(`/jobs/${jobId}`);
+    if (data.status === 'DONE') return data.downloadUrl;
+    if (data.status === 'FAILED')
+      throw new Error(data.errorMessage ?? 'Generation failed');
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error('Generation timed out');
 }
 
 export async function downloadGif(outputUrl: string) {

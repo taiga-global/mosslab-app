@@ -14,7 +14,6 @@ import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DynamoDbService } from './aws/dynamodb.service';
 import { S3Service } from './aws/s3.service';
-import { SqsService } from './aws/sqs.service';
 import { BackupService } from './backup/backup.service';
 import { GenerateModule } from './generate/generate.module';
 import { JobProcessor } from './job/job.processor';
@@ -27,7 +26,6 @@ import { ReplicateService } from './replicate/replicate.service';
   providers: [
     JobProcessor,
     S3Service,
-    SqsService,
     DynamoDbService,
     ReplicateService,
     OpenAiService,

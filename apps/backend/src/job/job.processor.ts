@@ -1,4 +1,5 @@
 import {
+  ChangeMessageVisibilityCommand,
   DeleteMessageCommand,
   Message,
   ReceiveMessageCommand,
@@ -6,40 +7,57 @@ import {
 } from '@aws-sdk/client-sqs';
 import {
   Injectable,
-  InternalServerErrorException,
+  Logger,
+  OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { JobMessage } from 'type';
+import { z } from 'zod';
+import { GenerateJob, GenerateStage } from '../../type';
 import { DynamoDbService } from '../aws/dynamodb.service';
 import { S3Service } from '../aws/s3.service';
 import { BackupService } from '../backup/backup.service';
 import { OpenAiService } from '../openai/openai.service';
 import { ReplicateService } from '../replicate/replicate.service';
 
+const JobMessageSchema = z.object({
+  jobId: z.string().uuid(),
+  key: z.string().min(1),
+  mode: z.enum(['animated', 'audiolized']),
+});
+
 @Injectable()
-export class JobProcessor implements OnModuleInit {
-  private sqs = new SQSClient({ region: process.env.AWS_REGION });
-  private queueUrl = process.env.AWS_SQS_URL;
+export class JobProcessor implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(JobProcessor.name);
+  private readonly sqs = new SQSClient({ region: process.env.AWS_REGION });
+  private readonly queueUrl = process.env.AWS_SQS_URL;
+  private readonly visibilitySeconds = Number(
+    process.env.SQS_VISIBILITY_TIMEOUT_SECONDS ?? 300,
+  );
+  private readonly maxReceiveCount = Number(process.env.SQS_MAX_RECEIVES ?? 3);
+  private timer?: NodeJS.Timeout;
   private isPolling = false;
+  private shuttingDown = false;
 
   constructor(
-    private replicate: ReplicateService,
-    private s3: S3Service,
-    private db: DynamoDbService,
-    private openAi: OpenAiService,
-    private backup: BackupService,
+    private readonly replicate: ReplicateService,
+    private readonly s3: S3Service,
+    private readonly db: DynamoDbService,
+    private readonly openAi: OpenAiService,
+    private readonly backup: BackupService,
   ) {}
 
   onModuleInit() {
-    setInterval(() => {
-      this.poll().catch((err) => {
-        console.error('poll() 실행 중 에러 발생:', err);
-      });
-    }, 5000);
+    this.timer = setInterval(() => void this.poll(), 5000);
+    void this.poll();
+  }
+
+  onModuleDestroy() {
+    this.shuttingDown = true;
+    if (this.timer) clearInterval(this.timer);
   }
 
   async poll() {
-    if (this.isPolling) return;
+    if (this.isPolling || this.shuttingDown || !this.queueUrl) return;
     this.isPolling = true;
     try {
       const { Messages } = await this.sqs.send(
@@ -47,224 +65,195 @@ export class JobProcessor implements OnModuleInit {
           QueueUrl: this.queueUrl,
           MaxNumberOfMessages: 1,
           WaitTimeSeconds: 10,
+          VisibilityTimeout: this.visibilitySeconds,
+          MessageSystemAttributeNames: ['ApproximateReceiveCount'],
         }),
       );
-      if (!Messages?.length) {
-        // console.error('Message가 없습니다:', Messages);
-        return;
-      } else {
-        console.log('Message: ', Messages);
-      }
 
-      for (const msg of Messages) {
-        await this.processOne(msg).catch((e) => {
-          console.error('[FAIL]', e);
-          // return false;
-        });
-        // if (ok) {
-        //   await this.sqs.send(
-        //     new DeleteMessageCommand({
-        //       QueueUrl: this.queueUrl,
-        //       ReceiptHandle: msg.ReceiptHandle,
-        //     }),
-        //   );
-        // }
-      }
-
-      // for (const m of Messages) {
-      //   const { jobId, key, mode } = JSON.parse(m.Body ?? '') as JobMessage;
-      //   let outKey;
-      //   if (!key) {
-      //     console.error('SQS 메시지에 key가 없습니다:', m.Body);
-      //     continue;
-      //   }
-      //   try {
-      //     // 1) S3 원본 다운로드 URL
-      //     console.log('1. S3 원본 다운로드 URL 생성 시작:', key);
-      //     const srcUrl = await this.s3.getDownloadUrl(key);
-      //     console.log('1. S3 원본 다운로드 URL 생성 성공:', srcUrl);
-
-      //     let mood, downloadUrl;
-
-      //     switch (mode) {
-      //       case 'animated':
-      //         // 2) Replicate 호출 (예시)
-      //         outKey = `results/${jobId}.gif`;
-      //         try {
-      //           console.log('2. Replicate 변환 시작:', srcUrl);
-      //           // gifBuffer = await this.replicate.makeGif(srcUrl);
-      //           downloadUrl = await this.replicate.makeGif(srcUrl);
-      //           console.log('2. Replicate 변환 성공');
-      //         } catch (err) {
-      //           console.error('2. Replicate 변환 에러:', err);
-      //           // 실패 시
-      //           await this.db.markFailed(
-      //             jobId,
-      //             'Replicate 변환 에러: ' + String(err),
-      //           );
-      //         }
-      //         break;
-
-      //       case 'audiolized':
-      //         outKey = `results/${jobId}.mp3`;
-      //         try {
-      //           console.log('2. OpenAI 변환 시작:', srcUrl);
-      //           mood = await this.openAi.extractMoodFromImage(srcUrl);
-      //           console.log('2. OpenAI 변환 성공', mood);
-      //         } catch (err) {
-      //           console.error('2. OpenAI 변환 에러:', err);
-      //           await this.db.markFailed(
-      //             jobId,
-      //             'OpenAI 변환 에러: ' + String(err),
-      //           );
-      //         }
-
-      //         try {
-      //           console.log('3. Replicate 변환 시작:', mood);
-      //           downloadUrl = await this.replicate.makeAudio(mood);
-      //           console.log('3. Replicate 변환 성공');
-      //         } catch (err) {
-      //           console.error('3. Replicate 변환 에러:', err);
-      //           // 실패 시
-      //           await this.db.markFailed(
-      //             jobId,
-      //             'Replicate 변환 에러: ' + String(err),
-      //           );
-      //         }
-
-      //         break;
-      //       default:
-      //         break;
-      //     }
-
-      //     // 4) 상태 업데이트
-      //     try {
-      //       console.log('4. DB 상태 업데이트 시작:', jobId, downloadUrl);
-      //       await this.db.markDone(jobId, downloadUrl);
-      //       console.log('4. DB 상태 업데이트 성공:', jobId, downloadUrl);
-      //     } catch (err) {
-      //       console.error('4. DB 상태 업데이트 에러:', err);
-      //       continue;
-      //     }
-      //   } finally {
-      //     // 3) 결과 업로드
-
-      //     try {
-      //       console.log('3. S3 결과 업로드 시작:', outKey);
-      //       await this.s3.uploadImage(
-      //         Buffer.from(gifBuffer),
-      //         'image/gif',
-      //         outKey,
-      //       );
-      //       console.log('3. S3 결과 업로드 성공:', outKey);
-      //     } catch (err) {
-      //       console.error('3. S3 결과 업로드 에러:', err);
-      //     }
-
-      //     // 5) 큐 삭제
-      //     try {
-      //       console.log('5. SQS 메시지 삭제 시작');
-      //       await this.sqs.send(
-      //         new DeleteMessageCommand({
-      //           QueueUrl: this.queueUrl,
-      //           ReceiptHandle: m.ReceiptHandle,
-      //         }),
-      //       );
-      //       console.log('5. SQS 메시지 삭제 성공');
-      //     } catch (err) {
-      //       console.error('5. SQS 메시지 삭제 에러:', err);
-      //     }
-      //   }
-      // }
+      for (const message of Messages ?? []) await this.handleMessage(message);
+    } catch (error) {
+      this.logger.error('SQS polling failed', this.errorText(error));
     } finally {
       this.isPolling = false;
     }
   }
 
-  private async processOne(m: Message): Promise<boolean> {
-    const { jobId, key, mode } = JSON.parse(m.Body ?? '') as JobMessage;
-    if (!key) throw new InternalServerErrorException('key missing in message');
+  private async handleMessage(message: Message) {
+    const receiveCount = Number(
+      message.Attributes?.ApproximateReceiveCount ?? 1,
+    );
+    let jobId: string | undefined;
+    const stopHeartbeat = this.startVisibilityHeartbeat(message);
 
     try {
-      console.log('0. SQS 메시지 삭제 시작');
-      await this.sqs.send(
-        new DeleteMessageCommand({
-          QueueUrl: this.queueUrl,
-          ReceiptHandle: m.ReceiptHandle,
-        }),
+      const parsed = JobMessageSchema.safeParse(JSON.parse(message.Body ?? ''));
+      if (!parsed.success)
+        throw new Error(`Invalid job message: ${parsed.error.message}`);
+      jobId = parsed.data.jobId;
+
+      const existing = (await this.db.get(jobId)) as GenerateJob | undefined;
+      if (!existing) throw new Error(`Job not found: ${jobId}`);
+      if (existing.status !== 'DONE') await this.processOne(existing);
+
+      await this.deleteMessage(message);
+      this.logger.log(`job=${jobId} completed receiveCount=${receiveCount}`);
+    } catch (error) {
+      const reason = this.errorText(error);
+      this.logger.error(
+        `job=${jobId ?? 'unknown'} failed receiveCount=${receiveCount}`,
+        reason,
       );
-      console.log('0. SQS 메시지 삭제 성공');
-    } catch (err) {
-      console.error('0. SQS 메시지 삭제 에러:', err);
-    }
-
-    let srcUrl = '';
-    let cdnUrl = '';
-    let outKey = '';
-    let mimeType = 'image/gif'; // 기본값, 필요시 변경
-
-    /* 1. 원본 S3 presign */
-    try {
-      console.log('1. S3 원본 다운로드 URL 생성 시작:', key);
-      srcUrl = await this.s3.getDownloadUrl(key);
-      console.log('1. S3 원본 다운로드 URL 생성 성공:', srcUrl);
-    } catch (err) {
-      console.error('1. S3 원본 다운로드 URL 생성 에러:', err);
-      await this.db.markFailed(
-        jobId,
-        '1. S3 원본 다운로드 URL 생성 에러: ' + String(err),
-      );
-      return false;
-    }
-
-    /* 2. 변환 */
-    if (mode === 'animated') {
-      try {
-        console.log('2. Animated 변환 시작:', srcUrl);
-        cdnUrl = await this.replicate.makeGif(srcUrl);
-        console.log('2. Animated 변환 성공');
-        outKey = `results/${jobId}.gif`;
-      } catch (err) {
-        console.error('2. Animated 변환 에러:', err);
-        await this.db.markFailed(jobId, 'Animated 변환 에러: ' + String(err));
-        return false;
+      if (jobId && receiveCount >= this.maxReceiveCount) {
+        await this.db
+          .markFailed(jobId, reason)
+          .catch((dbError) =>
+            this.logger.error(
+              `job=${jobId} failed to persist terminal error`,
+              this.errorText(dbError),
+            ),
+          );
       }
-    } else {
-      try {
-        mimeType = 'audio/mpeg'; // 예시로 MP3로 설정
-        console.log('2. Audiolized 변환 시작:', srcUrl);
-        const mood = await this.openAi.extractMoodFromImage(srcUrl);
-        cdnUrl = await this.replicate.makeAudio(mood);
-        console.log('2. Audiolized 변환 성공');
-        outKey = `results/${jobId}.mp3`;
-      } catch (err) {
-        console.error('2. Audiolized 변환 에러:', err);
-        await this.db.markFailed(jobId, 'Audiolized 변환 에러: ' + String(err));
-        return false;
-      }
+      // Do not delete. SQS retries and the queue redrive policy eventually sends it to the DLQ.
+    } finally {
+      stopHeartbeat();
+    }
+  }
+
+  private async processOne(job: GenerateJob) {
+    const startedAt = Date.now();
+    switch (job.mode) {
+      case 'animated':
+        await this.processAnimated(job);
+        break;
+      case 'audiolized':
+        await this.processAudiolized(job);
+        break;
+    }
+    this.logger.log(`job=${job.jobId} processingMs=${Date.now() - startedAt}`);
+  }
+
+  private async processAnimated(job: GenerateJob) {
+    let stage = job.currentStage ?? 'PENDING';
+    let cleanedImageKey = job.cleanedImageKey;
+    let generatedVideoKey = job.generatedVideoKey;
+    const outputKey = job.outputKey ?? `results/${job.jobId}.gif`;
+
+    if (stage === 'PENDING') {
+      const inputUrl = await this.s3.getDownloadUrl(job.inputKey);
+      const resultUrl = await this.replicate.cleanImage(inputUrl);
+      cleanedImageKey = `checkpoints/${job.jobId}/cleaned.jpg`;
+      await this.backup.copyFromUrl(resultUrl, cleanedImageKey, 'image/jpeg');
+      await this.checkpoint(job.jobId, stage, 'IMAGE_CLEANED', {
+        cleanedImageKey,
+      });
+      stage = 'IMAGE_CLEANED';
     }
 
-    /* 4. 상태 DONE 기록 (cdn) */
-    try {
-      console.log('3. DB 상태 업데이트 시작:', jobId, cdnUrl);
-      await this.db.markDone(jobId, cdnUrl);
-    } catch (err) {
-      console.error('3. DB 상태 업데이트 에러:', err);
-      await this.db.markFailed(jobId, 'DB 상태 업데이트 에러: ' + String(err));
-      return false;
+    if (stage === 'IMAGE_CLEANED') {
+      if (!cleanedImageKey) throw new Error('Missing cleaned image checkpoint');
+      const cleanedUrl = await this.s3.getDownloadUrl(cleanedImageKey);
+      const resultUrl = await this.replicate.animateImage(cleanedUrl);
+      generatedVideoKey = `checkpoints/${job.jobId}/animated.mp4`;
+      await this.backup.copyFromUrl(resultUrl, generatedVideoKey, 'video/mp4');
+      await this.checkpoint(job.jobId, stage, 'VIDEO_GENERATED', {
+        generatedVideoKey,
+      });
+      stage = 'VIDEO_GENERATED';
     }
 
-    /* 3. S3 백업(스트리밍)  ← 여기서 완료될 때까지 await */
-    try {
-      console.log('4. S3 백업 시작:', jobId, cdnUrl);
-      await this.backup.copyFromUrl(cdnUrl, outKey, mimeType);
-      console.log('4. S3 백업 성공:', jobId, cdnUrl);
-    } catch (err) {
-      console.error('4. S3 백업 에러:', err);
-      await this.db.markFailed(jobId, '4. S3 백업 에러: ' + String(err));
-      return false;
+    if (stage === 'VIDEO_GENERATED') {
+      if (!generatedVideoKey) throw new Error('Missing video checkpoint');
+      const videoUrl = await this.s3.getDownloadUrl(generatedVideoKey);
+      const resultUrl = await this.replicate.convertVideoToGif(videoUrl);
+      await this.backup.copyFromUrl(resultUrl, outputKey, 'image/gif');
+      await this.checkpoint(job.jobId, stage, 'GIF_GENERATED', { outputKey });
+      stage = 'GIF_GENERATED';
     }
 
-    return true;
+    if (stage === 'GIF_GENERATED') await this.db.markDone(job.jobId, outputKey);
+  }
+
+  private async processAudiolized(job: GenerateJob) {
+    let stage = job.currentStage ?? 'PENDING';
+    let extractedMood = job.extractedMood;
+    const outputKey = job.outputKey ?? `results/${job.jobId}.mp3`;
+
+    if (stage === 'PENDING') {
+      const inputUrl = await this.s3.getDownloadUrl(job.inputKey);
+      extractedMood = await this.openAi.extractMoodFromImage(inputUrl);
+      await this.checkpoint(job.jobId, stage, 'MOOD_EXTRACTED', {
+        extractedMood,
+      });
+      stage = 'MOOD_EXTRACTED';
+    }
+
+    if (stage === 'MOOD_EXTRACTED') {
+      if (!extractedMood) throw new Error('Missing mood checkpoint');
+      const resultUrl = await this.replicate.makeAudio(extractedMood);
+      await this.backup.copyFromUrl(resultUrl, outputKey, 'audio/mpeg');
+      await this.checkpoint(job.jobId, stage, 'AUDIO_GENERATED', { outputKey });
+      stage = 'AUDIO_GENERATED';
+    }
+
+    if (stage === 'AUDIO_GENERATED')
+      await this.db.markDone(job.jobId, outputKey);
+  }
+
+  private async checkpoint(
+    jobId: string,
+    expectedStage: GenerateStage,
+    nextStage: GenerateStage,
+    artifacts: Record<string, string | undefined>,
+  ) {
+    const definedArtifacts = Object.fromEntries(
+      Object.entries(artifacts).filter(
+        (entry): entry is [string, string] => entry[1] !== undefined,
+      ),
+    );
+    await this.db.saveCheckpoint(
+      jobId,
+      expectedStage,
+      nextStage,
+      definedArtifacts,
+    );
+  }
+
+  private startVisibilityHeartbeat(message: Message) {
+    const intervalMs = Math.max(1000, Math.floor(this.visibilitySeconds * 500));
+    const timer = setInterval(() => {
+      if (!message.ReceiptHandle || !this.queueUrl) return;
+      void this.sqs
+        .send(
+          new ChangeMessageVisibilityCommand({
+            QueueUrl: this.queueUrl,
+            ReceiptHandle: message.ReceiptHandle,
+            VisibilityTimeout: this.visibilitySeconds,
+          }),
+        )
+        .catch((error) =>
+          this.logger.error(
+            'SQS visibility heartbeat failed',
+            this.errorText(error),
+          ),
+        );
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }
+
+  private async deleteMessage(message: Message) {
+    if (!message.ReceiptHandle || !this.queueUrl)
+      throw new Error('Missing SQS receipt handle');
+    await this.sqs.send(
+      new DeleteMessageCommand({
+        QueueUrl: this.queueUrl,
+        ReceiptHandle: message.ReceiptHandle,
+      }),
+    );
+  }
+
+  private errorText(error: unknown) {
+    return error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : String(error);
   }
 }

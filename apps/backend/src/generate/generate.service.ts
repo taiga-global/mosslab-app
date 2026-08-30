@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
+import { GenerateMode } from '../../type';
 import { DynamoDbService } from '../aws/dynamodb.service';
 import { S3Service } from '../aws/s3.service';
-import { SqsService } from '../aws/sqs.service';
 
 interface GetPresignedUploadParams {
   filename: string;
@@ -13,7 +13,6 @@ interface GetPresignedUploadParams {
 export class GenerateService {
   constructor(
     private s3: S3Service,
-    private sqs: SqsService,
     private db: DynamoDbService,
   ) {}
 
@@ -28,34 +27,23 @@ export class GenerateService {
     }
   }
 
-  async requestGenerate(key: string, mode: string) {
+  async requestGenerate(key: string, mode: GenerateMode) {
     const jobId = uuid();
-    await this.sqs.sendJob({ jobId, key, mode });
-    await this.db.putPending(jobId, key, mode);
+    await this.db.createPendingWithOutbox(jobId, key, mode);
     return { jobId };
   }
 
   async getDownloadUrl(jobId: string) {
-    let downloadUrl = '';
-    let status: string;
-
-    do {
-      const job = (await this.db.get(jobId)) as {
-        status: string;
-        downloadUrl?: string;
-      } | null;
-      console.log('Job 상태:', job);
-
-      status = job?.status ?? 'PENDING';
-      if (job?.downloadUrl && status === 'DONE') {
-        downloadUrl = job.downloadUrl;
-      }
-
-      if (status === 'PENDING') {
-        await new Promise((resolve) => setTimeout(resolve, 10000)); // 10초 대기
-      }
-    } while (status === 'PENDING');
-
-    return { status, downloadUrl };
+    const job = (await this.db.get(jobId)) as {
+      status: string;
+      outputKey?: string;
+      errorMessage?: string;
+    } | null;
+    if (!job) throw new NotFoundException('Job not found');
+    const downloadUrl =
+      job.status === 'DONE' && job.outputKey
+        ? await this.s3.getDownloadUrl(job.outputKey)
+        : '';
+    return { status: job.status, downloadUrl, errorMessage: job.errorMessage };
   }
 }

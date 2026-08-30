@@ -1,7 +1,6 @@
 // src/backup/backup.service.ts
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import fetch from 'node-fetch';
 import { Readable } from 'node:stream';
 
 @Injectable()
@@ -15,8 +14,11 @@ export class BackupService {
     mimeType: string,
   ): Promise<void> {
     /* 1. 다운로드 스트림 확보 */
-    const res = await fetch(srcUrl);
-    console.log('res:', res);
+    const res = await fetch(srcUrl, {
+      signal: AbortSignal.timeout(
+        Number(process.env.EXTERNAL_HTTP_TIMEOUT_MS ?? 60_000),
+      ),
+    });
     if (!res.ok) {
       throw new InternalServerErrorException(
         `Download failed: ${res.status} ${res.statusText}`,
@@ -27,13 +29,6 @@ export class BackupService {
       throw new InternalServerErrorException('Response body is null');
     }
 
-    const contentLength = res.headers.get('content-length');
-    if (!contentLength) {
-      throw new InternalServerErrorException(
-        'Content-Length header is missing',
-      );
-    }
-
     const nodeStream = Readable.from(res.body); // Node.js 스트림으로 변환
     /* 3. S3 스트리밍 업로드 (메모리 O(1)) */
     await this.s3.send(
@@ -42,7 +37,9 @@ export class BackupService {
         Key: dstKey,
         Body: nodeStream,
         ContentType: mimeType,
-        ContentLength: parseInt(contentLength, 10),
+        ...(res.headers.get('content-length')
+          ? { ContentLength: Number(res.headers.get('content-length')) }
+          : {}),
       }),
     );
   }

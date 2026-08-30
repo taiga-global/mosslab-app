@@ -8,7 +8,12 @@ describe('GenerateController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GenerateController],
-      providers: [GenerateService],
+      providers: [
+        {
+          provide: GenerateService,
+          useValue: { requestGenerate: jest.fn(), getDownloadUrl: jest.fn() },
+        },
+      ],
     }).compile();
 
     controller = module.get<GenerateController>(GenerateController);

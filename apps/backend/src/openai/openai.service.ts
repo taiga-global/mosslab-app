@@ -8,6 +8,8 @@ export class OpenAiService {
   constructor() {
     this.client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      timeout: Number(process.env.OPENAI_TIMEOUT_MS ?? 60_000),
+      maxRetries: 2,
     });
   }
   async extractMoodFromImage(imageUrl: string): Promise<string> {
@@ -24,8 +26,6 @@ export class OpenAiService {
           },
         ],
       });
-      console.log(completion);
-
       return completion.choices[0].message.content ?? '';
     } catch (error) {
       console.error('Error extracting mood from image:', error);
